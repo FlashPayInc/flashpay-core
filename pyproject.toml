@@ -1,0 +1,97 @@
+[tool.poetry]
+name = "flashpay"
+version = "0.1.0"
+description = "Making payments accessible on Algorand."
+authors = [
+  "Emmanuel Tobiloba <tobiloba@flashpay.finance>",
+  "Lijadu Obafunmilayo <mofeoluwa@flashpay.finance>",
+  "Isaac Adewumi <isaac@flashpay.finance>",
+  "Shodipo John <john@flashpay.finance>",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Django = "3.2.13"
+django-environ = "^0.8.1"
+djangorestframework = "^3.13.1"
+sentry-sdk = "^1.5.12"
+django-redis = "^5.2.0"
+django-cors-headers = "^3.12.0"
+gunicorn = "^20.1.0"
+psycopg2 = "2.8.6"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+mypy = "0.942"
+isort = "^5.10.1"
+black = "^22.3.0"
+pytest-django = "^4.5.2"
+pytest-cov = "^3.0.0"
+django-stubs = "^1.11.0"
+djangorestframework-stubs = "^1.6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 99
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | migrations
+  )/
+'''
+
+[tool.isort]
+force_grid_wrap = 0
+use_parentheses = true
+combine_as_imports = true
+include_trailing_comma = true
+line_length = 99
+multi_line_output = 3
+skip_glob = ["**/.venv/*", "**/migrations/*"]
+default_section = "THIRDPARTY"
+known_first_party = "flashpay"
+known_django = "django"
+sections = ["FUTURE","STDLIB","THIRDPARTY","DJANGO","FIRSTPARTY","LOCALFOLDER"]
+
+[tool.mypy]
+python_version = 3.9
+disallow_untyped_defs = true
+ignore_missing_imports = false
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+show_error_codes = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+
+[[tool.mypy.overrides]]
+module = ["environ"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "flashpay.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "flashpay.settings.test"
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+branch = true
+source = ["flashpay/apps"]
+omit = ["*/tests/*", "*/migrations/*"]
