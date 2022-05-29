@@ -62,11 +62,27 @@ jobs:
       #----------------------------------------------
       #              run linters
       #----------------------------------------------
-      - name: Check Code Quality
+      - name: Run Code Analysis
         run: poetry run make lint
 
    test:
+    needs: ['lint']
     runs-on: ubuntu-latest
+
+    #---------------------------------------------------
+    #       add the services needed to run the tests
+    #---------------------------------------------------
+    services:
+      postgres:
+        image: postgres:12.11
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
       #----------------------------------------------
       #       check-out repo and set-up python
@@ -119,4 +135,9 @@ jobs:
       #              run test suite
       #----------------------------------------------
       - name: Run tests
-        run: poetry run make test
+        env:
+          DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
+          DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
+        run: |
+          poetry run make test
+          poetry run python manage.py migrate --no-input
