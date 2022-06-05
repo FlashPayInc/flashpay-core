@@ -184,6 +184,7 @@ LOGGING = {
 # ==============================================================================
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
