@@ -81,8 +81,9 @@ warn_unused_ignores = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
 
 [[tool.mypy.overrides]]
-module = ["environ"]
+module = ["environ", "*.migrations.*"]
 ignore_missing_imports = true
+ignore_errors = true
 
 [tool.django-stubs]
 django_settings_module = "flashpay.settings"
