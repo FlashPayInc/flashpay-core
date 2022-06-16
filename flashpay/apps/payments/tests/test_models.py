@@ -33,5 +33,5 @@ def test_models() -> None:
         txn_hash="wueyfbqwobv",
         amount=70,
     )
-    assert str(link) == link.name
+    assert str(link) == f"PaymentLink {link.name}"
     assert str(txn) == f"Txn {txn.txn_ref}"
