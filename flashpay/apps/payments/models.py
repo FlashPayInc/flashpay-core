@@ -6,6 +6,12 @@ from django.utils import timezone
 from flashpay.apps.core.models import BaseModel
 
 
+class TransactionStatus(models.TextChoices):
+    PENDING = "pending"
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
 class PaymentLink(BaseModel):
 
     asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
@@ -41,7 +47,9 @@ class BaseTransaction(models.Model):
     recipient = models.CharField(max_length=58)
     txn_hash = models.TextField()
     amount = models.DecimalField(max_digits=16, decimal_places=4)
-    status = models.CharField(max_length=50)
+    status = models.CharField(
+        max_length=50, choices=TransactionStatus.choices, default=TransactionStatus.PENDING
+    )
     timestamp = models.DateTimeField(default=timezone.now)
 
     class Meta:
