@@ -63,6 +63,13 @@ jobs:
       #              run linters
       #----------------------------------------------
       - name: Run Code Analysis
+        env:
+          DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
+          DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
+          SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
+          CONN_MAX_AGE: 60
+          INDEXER_ADDRESS: 'https://algoindexer.algoexplorerapi.io'
+          ALGOD_ADDRESS: 'https://node.algoexplorerapi.io'
         run: poetry run make lint
 
    test:
@@ -138,6 +145,10 @@ jobs:
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
           DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
+          SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
+          CONN_MAX_AGE: 60
+          INDEXER_ADDRESS: 'https://algoindexer.algoexplorerapi.io'
+          ALGOD_ADDRESS: 'https://node.algoexplorerapi.io'
         run: |
           poetry run make test
           poetry run python manage.py migrate --no-input

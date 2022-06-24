@@ -1,5 +1,10 @@
 from unittest import mock
 
+import pytest
+from algosdk.error import AlgodHTTPError, IndexerHTTPError
+
+from django.db import DatabaseError
+
 from rest_framework.test import APIClient
 
 
@@ -7,6 +12,38 @@ def test_ping_view(api_client: APIClient) -> None:
     response = api_client.get("/api/core/ping")
     assert response.status_code == 200
     assert response.data is None
+
+
+@pytest.mark.django_db
+def test_healthcheck_view(api_client: APIClient) -> None:
+    response = api_client.get("/api/core/health")
+    assert response.status_code == 200
+
+    with mock.patch(
+        "flashpay.apps.core.views.HealthCheckView.get",
+        side_effect=DatabaseError("Kaboom!"),
+    ):
+        response = api_client.get("/api/core/health")
+        assert response.status_code == 500
+
+
+def test_thirdparty_healthcheck_view(api_client: APIClient) -> None:
+    response = api_client.get("/api/core/health/thirdparty")
+    assert response.status_code == 200
+
+    with mock.patch(
+        "flashpay.apps.core.views.settings.ALGOD_CLIENT.health",
+        side_effect=AlgodHTTPError("Kaboom!"),
+    ):
+        response = api_client.get("/api/core/health/thirdparty")
+        assert response.status_code == 500
+
+    with mock.patch(
+        "flashpay.apps.core.views.settings.INDEXER_CLIENT.health",
+        side_effect=IndexerHTTPError("Kaboom!"),
+    ):
+        response = api_client.get("/api/core/health/thirdparty")
+        assert response.status_code == 500
 
 
 def test_404_page(api_client: APIClient) -> None:

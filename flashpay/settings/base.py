@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import environ
+from algosdk.v2client.algod import AlgodClient
+from algosdk.v2client.indexer import IndexerClient
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -186,3 +188,9 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+ALGOD_ADDRESS = env("ALGOD_ADDRESS")
+ALGOD_CLIENT = AlgodClient("FP", ALGOD_ADDRESS, {"X-API-Key": "FP"})
+
+INDEXER_ADDRESS = env("INDEXER_ADDRESS")
+INDEXER_CLIENT = IndexerClient("FP", INDEXER_ADDRESS, {"X-API-Key": "FP"})
