@@ -129,3 +129,9 @@ sentry_sdk.init(
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
+    "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+}
