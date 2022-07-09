@@ -26,4 +26,4 @@ def test_models() -> None:
     assert notification.title == not_data["title"]
     assert notification.body == not_data["body"]
     assert notification.seen is False
-    assert str(notification) == notification.title
+    assert str(notification) == f"Notification {notification.title}"
