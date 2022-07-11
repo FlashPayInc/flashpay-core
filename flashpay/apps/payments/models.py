@@ -20,6 +20,7 @@ class PaymentLink(BaseModel):
     description = models.TextField(null=True)
     slug = models.CharField(max_length=50, unique=True, null=True)
     amount = models.DecimalField(max_digits=16, decimal_places=4)
+    image = models.ImageField(upload_to="payment-links", null=True)
     is_active = models.BooleanField(default=True)
     has_fixed_amount = models.BooleanField()
     is_one_time = models.BooleanField()
@@ -61,4 +62,6 @@ class BaseTransaction(models.Model):
 
 class PaymentLinkTransaction(BaseTransaction):
 
-    payment_link = models.ForeignKey(PaymentLink, on_delete=models.DO_NOTHING, null=True)
+    payment_link = models.ForeignKey(
+        PaymentLink, on_delete=models.DO_NOTHING, null=True, related_name="txns"
+    )

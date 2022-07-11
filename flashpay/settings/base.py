@@ -28,15 +28,14 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PARTY_APPS = [
-    "corsheaders",
-    "rest_framework",
-]
+THIRD_PARTY_APPS = ["corsheaders", "rest_framework", "cloudinary"]
 
 LOCAL_APPS = ["flashpay.apps.core", "flashpay.apps.account", "flashpay.apps.payments"]
 
+
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
 
 WSGI_APPLICATION = "flashpay.wsgi.application"
 
@@ -186,9 +185,9 @@ LOGGING = {
 # ==============================================================================
 REST_FRAMEWORK: Dict[str, Union[str, Tuple[str]]] = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
-    ),
+    "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
+    "PAGE_SIZE": 5,
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -199,13 +198,10 @@ ALGOD_CLIENT = AlgodClient("FP", ALGOD_ADDRESS, {"X-API-Key": "FP"})
 INDEXER_ADDRESS = env("INDEXER_ADDRESS")
 INDEXER_CLIENT = IndexerClient("FP", INDEXER_ADDRESS, {"X-API-Key": "FP"})
 
-ENCRYPTION_KEY = env("ENCRYPTION_KEY")
-
-SIMPLE_JWT = {
-    "USER_ID_FIELD": "address",
-    "USER_ID_CLAIM": "account_id",
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
-    "REFRESH_TOKEN_LIFETIME": timedelta(hours=1),
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": env("CLOUDINARY_APP_NAME"),
+    "API_KEY": env("CLOUDINARY_API_KEY"),
+    "API_SECRET": env("CLOUDINARY_API_SECRET"),
 }
 
-FLASHPAY_MASTER_WALLET = "ZTFRJ36LCYELJMIHLK3CLXA7CAQX6T5T3DFWWXOAT462HXLBZCSUWJCXIY"
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"

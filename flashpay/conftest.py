@@ -2,8 +2,6 @@ from typing import Any
 
 import pytest
 
-from django.conf import settings
-
 from rest_framework.test import APIClient
 
 

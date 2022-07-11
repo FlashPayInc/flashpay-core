@@ -65,3 +65,9 @@ def test_custom_exception_handler_response(api_client: APIClient) -> None:
 
     response = api_client.post("/api/core/ping")
     assert response.status_code == 405
+
+
+@pytest.mark.django_db
+def test_assets_view(api_client: APIClient) -> None:
+    response = api_client.get("/api/core/assets")
+    assert response.status_code == 200
