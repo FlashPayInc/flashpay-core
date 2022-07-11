@@ -197,11 +197,3 @@ ALGOD_CLIENT = AlgodClient("FP", ALGOD_ADDRESS, {"X-API-Key": "FP"})
 
 INDEXER_ADDRESS = env("INDEXER_ADDRESS")
 INDEXER_CLIENT = IndexerClient("FP", INDEXER_ADDRESS, {"X-API-Key": "FP"})
-
-CLOUDINARY_STORAGE = {
-    "CLOUD_NAME": env("CLOUDINARY_APP_NAME"),
-    "API_KEY": env("CLOUDINARY_API_KEY"),
-    "API_SECRET": env("CLOUDINARY_API_SECRET"),
-}
-
-DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
