@@ -6,6 +6,7 @@ from flashpay.apps.core.models import BaseModel
 class Account(BaseModel):
 
     address = models.CharField(max_length=58, unique=True)
+    is_verified = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return f"Account {self.address}"
