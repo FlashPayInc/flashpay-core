@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class AccountWalletAuthenticationView(GenericAPIView):
-    queryset = Account  # type: ignore
+    queryset = Account.objects.get_queryset()
     serializer_class: Optional[Type["BaseSerializer"]] = AccountWalletAuthenticationSerializer
     permission_classes: Sequence["_PermissionClass"] = [AllowAny]
 
@@ -64,7 +64,7 @@ class AccountWalletAuthenticationView(GenericAPIView):
 
 
 class AccountSetUpView(GenericAPIView):
-    queryset = Account  # type: ignore
+    queryset = Account.objects.get_queryset()
     indexer_client = settings.INDEXER_CLIENT
     serializer_class: Optional[Type["BaseSerializer"]] = AccountSetUpSerializer
     permission_classes: Sequence["_PermissionClass"] = [AllowAny]
@@ -73,11 +73,19 @@ class AccountSetUpView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # This should just be `.get()` given that a user connects their wallet first before
-        # setting it up but this does not hurt either.
-        account, _ = self.get_queryset().get_or_create(
-            address=serializer.validated_data["address"],
-        )
+        try:
+            account = self.get_queryset().get(
+                address=serializer.validated_data["address"],
+            )
+        except Account.DoesNotExist:
+            return Response(
+                data={
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                    "message": f"Sorry, account with address {serializer.validated_data['address']} not found!",  # noqa: E501
+                    "data": None,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
         if account.is_verified is True:
             return Response(
                 data={
@@ -106,28 +114,59 @@ class AccountSetUpView(GenericAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if len(api_response["transactions"]) == 0:
+        # check if transaction type of 'pay' i.e sending & receiving ALGO.
+        if api_response["transaction"]["tx-type"] != "pay":
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "An error occured while setting up your account",
+                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
                     "data": None,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        tx_note = api_response["transactions"][0].get("note")
-        if tx_note is None or tx_note != b64encode(serializer.validated_data["nonce"]).decode():
+
+        # check if the sender of the txn is the same as the one provided in the payload.
+        if api_response["transaction"]["sender"] != account.address:
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: 501
+                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
                     "data": None,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # check if the receiver of the txn is FLASHPAY.
+        if (
+            api_response["transaction"]["payment-transaction"]["receiver"]
+            != settings.FLASHPAY_MASTER_WALLET
+        ):
+            return Response(
+                data={
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # check if the transaction note matches the nonce generated.
+        tx_note = api_response["transaction"].get("note")
+        if (
+            tx_note is None
+            or tx_note != b64encode(serializer.validated_data["nonce"].encode()).decode()
+        ):
+            return Response(
+                data={
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         account.is_verified = True
         account.save()
-
         return Response(
             data={
                 "status_code": status.HTTP_200_OK,
