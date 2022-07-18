@@ -135,3 +135,5 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
 }
+
+FLASHPAY_MASTER_WALLET = env("FLASHPAY_MASTER_WALLET")
