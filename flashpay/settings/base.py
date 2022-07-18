@@ -1,4 +1,6 @@
+from datetime import timedelta
 from pathlib import Path
+from typing import Dict, Tuple, Union
 
 import environ
 from algosdk.v2client.algod import AlgodClient
@@ -182,9 +184,11 @@ LOGGING = {
 # ==============================================================================
 # THIRD-PARTY SETTINGS
 # ==============================================================================
-REST_FRAMEWORK = {
+REST_FRAMEWORK: Dict[str, Union[str, Tuple[str]]] = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
-    "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
+    ),
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -194,3 +198,14 @@ ALGOD_CLIENT = AlgodClient("FP", ALGOD_ADDRESS, {"X-API-Key": "FP"})
 
 INDEXER_ADDRESS = env("INDEXER_ADDRESS")
 INDEXER_CLIENT = IndexerClient("FP", INDEXER_ADDRESS, {"X-API-Key": "FP"})
+
+ENCRYPTION_KEY = env("ENCRYPTION_KEY")
+
+SIMPLE_JWT = {
+    "USER_ID_FIELD": "address",
+    "USER_ID_CLAIM": "account_id",
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=1),
+}
+
+FLASHPAY_MASTER_WALLET = "ZTFRJ36LCYELJMIHLK3CLXA7CAQX6T5T3DFWWXOAT462HXLBZCSUWJCXIY"
