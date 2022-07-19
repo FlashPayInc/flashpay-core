@@ -1,14 +1,44 @@
 import json
+from typing import Any, Tuple
 
 import pytest
 
 from rest_framework.test import APIClient
 
+from flashpay.apps.account.models import Account
 from flashpay.apps.core.models import Asset
 
 
 @pytest.mark.django_db
-def test_payment_link_crud(api_client: APIClient) -> None:
+def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
+    # Create Payment Link
+    response1 = api_client.post("/api/payment-link/")
+    assert response1.status_code == 401
+
+    # Fetch Payment Links
+    response2 = api_client.get("/api/payment-link/")
+    assert response2.status_code == 401
+
+    # Retreive Payment Link
+    response3 = api_client.get("/api/payment-link/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
+    assert response3.status_code == 401
+
+    # Active | Inactive Update Test
+    response5 = api_client.put("/api/payment-link/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
+    assert response5.status_code == 401
+
+    # Fetch Transactions Endpoint
+    response6 = api_client.get(
+        "/api/payment-link/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c/transactions"
+    )
+    assert response6.status_code == 401
+
+
+@pytest.mark.django_db
+def test_payment_link_crud(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
+    auth_token = test_account[1]
+    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+
     asset = Asset.objects.create(
         asa_id=1, short_name="ALGO", long_name="Algorand", image_url="https://hi.com/algo"
     )
@@ -33,7 +63,6 @@ def test_payment_link_crud(api_client: APIClient) -> None:
     assert response4.status_code == 404
 
     # Active | Inactive Update Test
-
     response5 = api_client.put(f"/api/payment-link/{results[0]['uid']}")
     assert response5.status_code == 200
     assert not json.loads(response5.content)["data"]["is_active"]

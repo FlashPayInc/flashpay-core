@@ -4,6 +4,7 @@ from django.db.models import Sum
 
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
+from flashpay.apps.account.models import Account
 from flashpay.apps.core.serializers import AssetSerializer
 from flashpay.apps.payments.models import PaymentLink, PaymentLinkTransaction
 
@@ -49,6 +50,9 @@ class CreatePaymentLinkSerializer(ModelSerializer):
         # check amount and fixed amount fields
         if (attrs["has_fixed_amount"] and attrs["amount"] <= 0) or attrs["amount"] < 0:
             raise ValidationError(detail="Invalid Amount")
+        # Attatch Account creating the payment link
+        account = Account.objects.get(address=self.context["request"].user.id)
+        attrs["account"] = account
         return super().validate(attrs)
 
 

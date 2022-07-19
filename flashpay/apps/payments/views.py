@@ -1,13 +1,13 @@
 import logging
-from typing import Any, Dict, Optional, Type
+from typing import TYPE_CHECKING, Dict, Optional, Sequence, Type
 
 from django.db.models import QuerySet
 
 from rest_framework import status
 from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.serializers import BaseSerializer
 
 from flashpay.apps.core.paginators import TimeStampOrderedCustomCursorPagination
 from flashpay.apps.payments.models import PaymentLink, PaymentLinkTransaction
@@ -18,16 +18,23 @@ from flashpay.apps.payments.serializers import (
     PaymentLinkTransactionSerializer,
 )
 
+if TYPE_CHECKING:
+    from rest_framework.permissions import _PermissionClass
+    from rest_framework.serializers import BaseSerializer
+
 logger = logging.getLogger(__name__)
 
 
 class PaymentLinkView(ListCreateAPIView):
 
-    queryset: QuerySet = PaymentLink.objects.all()
-    serializer_class: Optional[Type[BaseSerializer[Any]]] = PaymentLinkSerializer
+    serializer_class: Optional[Type["BaseSerializer"]] = PaymentLinkSerializer
+    permission_classes: Sequence["_PermissionClass"] = [IsAuthenticated]
+
+    def get_queryset(self) -> QuerySet:
+        return PaymentLink.objects.filter(account__address=self.request.user.id)  # type: ignore
 
     def create(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
-        ser = CreatePaymentLinkSerializer(data=request.data)
+        ser = CreatePaymentLinkSerializer(data=request.data, context={"request": request})
         ser.is_valid(raise_exception=True)
         link = ser.save()
         return Response(
@@ -41,9 +48,14 @@ class PaymentLinkView(ListCreateAPIView):
 
 
 class PaymentLinkDetailView(RetrieveUpdateAPIView):
+
+    permission_classes: Sequence["_PermissionClass"] = [IsAuthenticated]
+
     def retrieve(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         try:
-            link = PaymentLink.objects.get(uid=kwargs["uid"])
+            link = PaymentLink.objects.get(
+                uid=kwargs["uid"], account__address=request.user.id  # type: ignore
+            )
         except PaymentLink.DoesNotExist:
             return Response(
                 {
@@ -63,7 +75,9 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
     def update(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         try:
-            link = PaymentLink.objects.get(uid=kwargs["uid"])
+            link = PaymentLink.objects.get(
+                uid=kwargs["uid"], account__address=request.user.id  # type: ignore
+            )
         except PaymentLink.DoesNotExist:
             return Response(
                 {
@@ -87,9 +101,13 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
 class PaymentLinkTransactionView(ListAPIView):
 
-    serializer_class: Optional[Type[BaseSerializer]] = PaymentLinkTransactionSerializer
+    serializer_class: Optional[Type["BaseSerializer"]] = PaymentLinkTransactionSerializer
     pagination_class = TimeStampOrderedCustomCursorPagination
+    permission_classes: Sequence["_PermissionClass"] = [IsAuthenticated]
 
     def get_queryset(self) -> QuerySet:
         uid = self.kwargs.get("uid")
-        return PaymentLinkTransaction.objects.filter(payment_link__uid=uid)
+        return PaymentLinkTransaction.objects.filter(
+            payment_link__uid=uid,
+            payment_link__account__address=self.request.user.id,  # type: ignore
+        )
