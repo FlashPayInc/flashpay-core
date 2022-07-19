@@ -31,7 +31,7 @@ class PaymentLinkView(ListCreateAPIView):
     permission_classes: Sequence["_PermissionClass"] = [IsAuthenticated]
 
     def get_queryset(self) -> QuerySet:
-        return PaymentLink.objects.filter(account__address=self.request.user.id)  # type: ignore
+        return PaymentLink.objects.filter(account__address=self.request.user.id)
 
     def create(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         ser = CreatePaymentLinkSerializer(data=request.data, context={"request": request})
@@ -53,9 +53,7 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
     def retrieve(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         try:
-            link = PaymentLink.objects.get(
-                uid=kwargs["uid"], account__address=request.user.id  # type: ignore
-            )
+            link = PaymentLink.objects.get(uid=kwargs["uid"], account__address=request.user.id)
         except PaymentLink.DoesNotExist:
             return Response(
                 {
@@ -75,9 +73,7 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
     def update(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         try:
-            link = PaymentLink.objects.get(
-                uid=kwargs["uid"], account__address=request.user.id  # type: ignore
-            )
+            link = PaymentLink.objects.get(uid=kwargs["uid"], account__address=request.user.id)
         except PaymentLink.DoesNotExist:
             return Response(
                 {
@@ -109,5 +105,5 @@ class PaymentLinkTransactionView(ListAPIView):
         uid = self.kwargs.get("uid")
         return PaymentLinkTransaction.objects.filter(
             payment_link__uid=uid,
-            payment_link__account__address=self.request.user.id,  # type: ignore
+            payment_link__account__address=self.request.user.id,
         )
