@@ -1,3 +1,4 @@
+import secrets
 from typing import Iterable, Optional
 
 from django.db import models
@@ -19,11 +20,11 @@ class PaymentLink(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(null=True)
     slug = models.CharField(max_length=50, unique=True, null=True)
-    amount = models.DecimalField(max_digits=16, decimal_places=4)
+    amount = models.DecimalField(max_digits=16, decimal_places=4, default=0)
     image = models.ImageField(upload_to="payment-links", null=True)
     is_active = models.BooleanField(default=True)
-    has_fixed_amount = models.BooleanField()
-    is_one_time = models.BooleanField()
+    has_fixed_amount = models.BooleanField(default=False)
+    is_one_time = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return f"PaymentLink {self.name}"
@@ -36,7 +37,7 @@ class PaymentLink(BaseModel):
         update_fields: Optional[Iterable[str]] = None,
     ) -> None:
         if not self.slug:
-            self.slug = self.pk.hex[:16]
+            self.slug = secrets.token_urlsafe()
         super().save(force_insert, force_update, using, update_fields)
 
 
