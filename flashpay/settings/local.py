@@ -14,7 +14,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
     ),
     "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
-    "PAGE_SIZE": 5,
+    "PAGE_SIZE": 10,
 }
 
 SIMPLE_JWT = {

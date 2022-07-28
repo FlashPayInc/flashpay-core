@@ -28,14 +28,16 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PARTY_APPS = ["corsheaders", "rest_framework", "cloudinary"]
+THIRD_PARTY_APPS = [
+    "corsheaders",
+    "rest_framework",
+    "cloudinary",
+]
 
 LOCAL_APPS = ["flashpay.apps.core", "flashpay.apps.account", "flashpay.apps.payments"]
 
-
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
-
 
 WSGI_APPLICATION = "flashpay.wsgi.application"
 
@@ -187,7 +189,7 @@ REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
-    "PAGE_SIZE": 5,
+    "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
     ),

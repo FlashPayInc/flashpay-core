@@ -14,5 +14,5 @@ REST_FRAMEWORK = {
     ),
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
-    "PAGE_SIZE": 5,
+    "PAGE_SIZE": 10,
 }

@@ -10,6 +10,6 @@ from flashpay.apps.core.views import (
 urlpatterns = [
     path("ping", PingView.as_view()),
     path("health", HealthCheckView.as_view()),
-    path("assets", AssetView.as_view(), name="assets"),
+    path("assets", AssetView.as_view()),
     path("health/thirdparty", HealthCheckThirdPartyView.as_view()),
 ]

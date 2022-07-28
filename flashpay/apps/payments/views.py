@@ -83,6 +83,15 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
                 },
                 status.HTTP_404_NOT_FOUND,
             )
+        if link.is_one_time and not link.is_active:
+            return Response(
+                {
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Cannot activate a one-time link.",
+                    "data": None,
+                },
+                status.HTTP_400_BAD_REQUEST,
+            )
         link.is_active = not link.is_active
         link.save()
         return Response(

@@ -1,17 +1,15 @@
 import logging
-from typing import Optional, Type
 
 from algosdk.error import AlgodHTTPError, AlgodResponseError, IndexerHTTPError
 
 from django.conf import settings
-from django.db import DatabaseError, OperationalError, connection, models
+from django.db import DatabaseError, OperationalError, connection
 from django.http import HttpRequest, JsonResponse
 
 from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.serializers import BaseSerializer
 
 from flashpay.apps.core.models import Asset
 from flashpay.apps.core.serializers import AssetSerializer
@@ -62,8 +60,8 @@ class HealthCheckThirdPartyView(GenericAPIView):
 
 class AssetView(ListAPIView):
 
-    queryset: models.QuerySet = Asset.objects.all()
-    serializer_class: Optional[Type[BaseSerializer]] = AssetSerializer
+    queryset = Asset.objects.all()
+    serializer_class = AssetSerializer
     pagination_class = None
 
 
