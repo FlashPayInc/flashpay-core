@@ -20,7 +20,7 @@ class PaymentLink(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(null=True)
     slug = models.CharField(max_length=50, unique=True, null=True)
-    amount = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    amount = models.DecimalField(max_digits=16, decimal_places=4, null=False, blank=False)
     image = models.ImageField(upload_to="payment-links", null=True)
     is_active = models.BooleanField(default=True)
     has_fixed_amount = models.BooleanField(default=False)
@@ -37,7 +37,7 @@ class PaymentLink(BaseModel):
         update_fields: Optional[Iterable[str]] = None,
     ) -> None:
         if not self.slug:
-            self.slug = secrets.token_urlsafe()
+            self.slug = secrets.token_urlsafe(5)
         super().save(force_insert, force_update, using, update_fields)
 
 
@@ -64,5 +64,5 @@ class BaseTransaction(models.Model):
 class PaymentLinkTransaction(BaseTransaction):
 
     payment_link = models.ForeignKey(
-        PaymentLink, on_delete=models.DO_NOTHING, null=True, related_name="txns"
+        PaymentLink, on_delete=models.DO_NOTHING, null=True, related_name="transactions"
     )
