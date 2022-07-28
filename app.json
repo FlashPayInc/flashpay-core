@@ -1,0 +1,10 @@
+{
+  "name": "FlashPay Inc.",
+  "description": "Making payments accessible on Algorand",
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "addons": ["heroku-postgresql", "heroku-redis"]
+}
