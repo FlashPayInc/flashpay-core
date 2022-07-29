@@ -1,5 +1,5 @@
 {
-  "name": "FlashPay Inc.",
+  "name": "FlashPay Core",
   "description": "Making payments accessible on Algorand",
   "buildpacks": [
     {
