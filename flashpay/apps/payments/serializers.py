@@ -1,7 +1,6 @@
 from typing import Any
 
 from django.conf import settings
-from django.db.models import Sum
 
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
@@ -11,31 +10,15 @@ from flashpay.apps.payments.models import PaymentLink, PaymentLinkTransaction
 
 
 class PaymentLinkSerializer(ModelSerializer):
-
     asset = AssetSerializer()
-    image = SerializerMethodField()
+    image_url = SerializerMethodField()
 
-    def get_image(self, obj: PaymentLink) -> Any:
-        return obj.image.url if bool(obj.image) is None else settings.DEFAULT_PAYMENT_LINK_IMAGE
+    def get_image_url(self, obj: PaymentLink) -> Any:
+        return obj.image.url if bool(obj.image) else settings.DEFAULT_PAYMENT_LINK_IMAGE
 
     class Meta:
-
         model = PaymentLink
         exclude = ("deleted_at", "account")
-
-
-class PaymentLinkDetailSerializer(PaymentLinkSerializer):
-
-    total_revenue = SerializerMethodField()
-
-    def get_total_revenue(self, obj: PaymentLink) -> str:
-        total = PaymentLinkTransaction.objects.filter(payment_link=obj).aggregate(Sum("amount"))[
-            "amount__sum"
-        ]
-        return str(total) if (total is not None) else "0.00"
-
-    class Meta(PaymentLinkSerializer.Meta):
-        pass
 
 
 class CreatePaymentLinkSerializer(ModelSerializer):

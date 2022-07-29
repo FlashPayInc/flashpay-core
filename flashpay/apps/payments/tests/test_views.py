@@ -1,5 +1,4 @@
-import json
-from typing import Any, Dict, List, Tuple, Union, cast
+from typing import Any, Tuple
 
 import pytest
 
@@ -9,6 +8,7 @@ from rest_framework.test import APIClient
 
 from flashpay.apps.account.models import Account
 from flashpay.apps.core.models import Asset
+from flashpay.apps.payments.models import PaymentLink
 
 
 @pytest.mark.django_db
@@ -47,31 +47,39 @@ def test_payment_link_crud(api_client: APIClient, test_account: Tuple[Account, A
     data = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 40}
     response = api_client.post("/api/payment-links/", data=data)
     assert response.status_code == 201
-    # check default image
-    link = json.loads(response.content)["data"]
-    assert link["image"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
+    assert "Payment Link Created Successfully" in response.data["message"]
+
+    # check that the created link is present in db
+    payment_link = PaymentLink.objects.first()
+    assert payment_link is not None
+
+    # retrieve all links
+    response = api_client.get("/api/payment-links/")
+    assert response.status_code == 200
+    assert len(response.data["data"]["results"]) == 1
 
     # Retreive Payment Link
-    response2 = api_client.get(f"/api/payment-links/{link['uid']}")
-    assert response2.status_code == 200
-
-    # Fetch payment links
-    response3 = api_client.get("/api/payment-links/")
-    assert response3.status_code == 200
-    assert len(json.loads(response3.content)["data"]["results"]) == 1
+    response = api_client.get(f"/api/payment-links/{payment_link.uid}")
+    assert response.status_code == 200
+    assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
+    assert response.data["message"] is None
 
     # Retrieve Payment Link 404
-    response4 = api_client.get("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
-    assert response4.status_code == 404
+    response = api_client.get("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
+    assert response.status_code == 404
+    assert "No PaymentLink matches the given query." in response.data["message"]
 
     # Active | Inactive Update Test
-    response5 = api_client.patch(f"/api/payment-links/{link['uid']}")
-    assert response5.status_code == 200
-    assert not json.loads(response5.content)["data"]["is_active"]
+    response = api_client.patch(f"/api/payment-links/{payment_link.uid}")
+    assert response.status_code == 200
+    assert response.data["data"]["is_active"] is False
+    assert "Payment Link Updated" in response.data["message"]
 
     # Fetch Transactions Endpoint
-    response6 = api_client.get(f"/api/payment-links/{link['uid']}/transactions")
-    assert response6.status_code == 200
+    response = api_client.get(f"/api/payment-links/{payment_link.uid}/transactions")
+    assert response.status_code == 200
+    assert len(response.data["data"]["results"]) == 0
+    assert "Transactions for payment link returned successfully" in response.data["message"]
 
 
 @pytest.mark.django_db
@@ -86,20 +94,12 @@ def test_create_payment_link_no_amount_and_zero_amount(
     )
     data = {"name": "Test", "description": "test", "asset": asset.uid}
     response = api_client.post("/api/payment-links/", data=data)
-    data = json.loads(response.content)
     assert response.status_code == 400
-    assert data["message"] == "Validation Error"
-    assert (
-        cast(Dict[str, Union[str, List[str]]], data["data"])["amount"][0]
-        == "This field is required."
-    )
+    assert response.data["message"] == "Validation Error"
+    assert response.data["data"]["amount"][0] == "This field is required."
 
     data2 = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 0}
-    response2 = api_client.post("/api/payment-links/", data=data2)
-    data = json.loads(response2.content)
-    assert response2.status_code == 400
-    assert data["message"] == "Validation Error"
-    assert (
-        cast(Dict[str, Union[str, List[str]]], data["data"])["amount"][0]
-        == "Amount cannot be less than or equal to zero."
-    )
+    response = api_client.post("/api/payment-links/", data=data2)
+    assert response.status_code == 400
+    assert response.data["message"] == "Validation Error"
+    assert response.data["data"]["amount"][0] == "Amount cannot be less than or equal to zero."

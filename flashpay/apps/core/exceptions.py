@@ -1,7 +1,5 @@
 from typing import Any, Dict
 
-from django.http import Http404
-
 from rest_framework import status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
@@ -33,19 +31,11 @@ def custom_exception_handler(exception: APIException, context: Dict[str, Any]) -
             status=exception_response.status_code,
         )
 
-    if isinstance(exception, Http404):
-        return Response(
-            data={
-                "status_code": exception_response.status_code,
-                "message": str(exception),
-                "data": None,
-            },
-            status=exception_response.status_code,
-        )
+    exception_message = exception.detail if getattr(exception, "detail", None) else str(exception)
     return Response(
         data={
             "status_code": exception_response.status_code,
-            "message": exception.detail,
+            "message": exception_message,
             "data": None,
         },
         status=exception_response.status_code,

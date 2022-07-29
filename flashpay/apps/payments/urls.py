@@ -7,7 +7,7 @@ from flashpay.apps.payments.views import (
 )
 
 urlpatterns = [
+    path("", PaymentLinkView.as_view()),
     path("<str:uid>/transactions", PaymentLinkTransactionView.as_view()),
     path("<str:uid>", PaymentLinkDetailView.as_view()),
-    path("", PaymentLinkView.as_view()),
 ]

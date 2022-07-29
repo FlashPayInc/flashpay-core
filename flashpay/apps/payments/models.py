@@ -1,7 +1,9 @@
 import secrets
+from decimal import Decimal
 from typing import Iterable, Optional
 
 from django.db import models
+from django.db.models import Sum
 from django.utils import timezone
 
 from flashpay.apps.core.models import BaseModel
@@ -14,7 +16,6 @@ class TransactionStatus(models.TextChoices):
 
 
 class PaymentLink(BaseModel):
-
     asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
     account = models.ForeignKey("account.Account", on_delete=models.DO_NOTHING, null=True)
     name = models.CharField(max_length=100)
@@ -40,9 +41,15 @@ class PaymentLink(BaseModel):
             self.slug = secrets.token_urlsafe(5)
         super().save(force_insert, force_update, using, update_fields)
 
+    @property
+    def total_revenue(self) -> Decimal:
+        total: Optional[Decimal] = self.transactions.filter(
+            status=TransactionStatus.SUCCESS
+        ).aggregate(Sum("amount"))["amount__sum"]
+        return total if total is not None else Decimal("0.0000")
+
 
 class BaseTransaction(models.Model):
-
     txn_ref = models.CharField(max_length=20, unique=True)
     asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
     sender = models.CharField(max_length=58)
@@ -62,7 +69,6 @@ class BaseTransaction(models.Model):
 
 
 class PaymentLinkTransaction(BaseTransaction):
-
     payment_link = models.ForeignKey(
         PaymentLink, on_delete=models.DO_NOTHING, null=True, related_name="transactions"
     )
