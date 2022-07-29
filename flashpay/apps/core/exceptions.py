@@ -31,10 +31,11 @@ def custom_exception_handler(exception: APIException, context: Dict[str, Any]) -
             status=exception_response.status_code,
         )
 
+    exception_message = exception.detail if getattr(exception, "detail", None) else str(exception)
     return Response(
         data={
             "status_code": exception_response.status_code,
-            "message": exception.detail,
+            "message": exception_message,
             "data": None,
         },
         status=exception_response.status_code,

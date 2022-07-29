@@ -31,6 +31,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "corsheaders",
     "rest_framework",
+    "cloudinary",
 ]
 
 LOCAL_APPS = ["flashpay.apps.core", "flashpay.apps.account", "flashpay.apps.payments"]
@@ -184,8 +185,11 @@ LOGGING = {
 # ==============================================================================
 # THIRD-PARTY SETTINGS
 # ==============================================================================
-REST_FRAMEWORK: Dict[str, Union[str, Tuple[str]]] = {
+REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
+    "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
     ),
@@ -209,3 +213,6 @@ SIMPLE_JWT = {
 }
 
 FLASHPAY_MASTER_WALLET = "ZTFRJ36LCYELJMIHLK3CLXA7CAQX6T5T3DFWWXOAT462HXLBZCSUWJCXIY"
+DEFAULT_PAYMENT_LINK_IMAGE = (
+    "https://asset.cloudinary.com/flashpay/f6e11bc25a974729eb5fe362024e2c0d"
+)

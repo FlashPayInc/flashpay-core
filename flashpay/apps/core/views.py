@@ -7,9 +7,12 @@ from django.db import DatabaseError, OperationalError, connection
 from django.http import HttpRequest, JsonResponse
 
 from rest_framework import status
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+from flashpay.apps.core.models import Asset
+from flashpay.apps.core.serializers import AssetSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,13 @@ class HealthCheckThirdPartyView(GenericAPIView):
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_200_OK)
+
+
+class AssetView(ListAPIView):
+
+    queryset = Asset.objects.all()
+    serializer_class = AssetSerializer
+    pagination_class = None
 
 
 def handler_404(request: HttpRequest, exception: Exception) -> JsonResponse:

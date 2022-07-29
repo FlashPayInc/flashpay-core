@@ -4,6 +4,7 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/core/", include("flashpay.apps.core.urls")),
+    path("api/payment-links/", include("flashpay.apps.payments.urls")),
     path("api/accounts/", include("flashpay.apps.account.urls")),
 ]
 handler404 = "flashpay.apps.core.views.handler_404"
