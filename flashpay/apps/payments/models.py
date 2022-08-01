@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from decimal import Decimal
 from typing import Iterable, Optional
 
@@ -13,6 +14,10 @@ class TransactionStatus(models.TextChoices):
     PENDING = "pending"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+class TransactionType(models.TextChoices):
+    PAYMENT_LINK = "payment_link"
 
 
 class PaymentLink(BaseModel):
@@ -43,32 +48,27 @@ class PaymentLink(BaseModel):
 
     @property
     def total_revenue(self) -> Decimal:
-        total: Optional[Decimal] = self.transactions.filter(
-            status=TransactionStatus.SUCCESS
+        total: Optional[Decimal] = Transaction.objects.filter(
+            txn_ref__icontains=self.uid.hex, status=TransactionStatus.SUCCESS
         ).aggregate(Sum("amount"))["amount__sum"]
         return total if total is not None else Decimal("0.0000")
 
 
-class BaseTransaction(models.Model):
-    txn_ref = models.CharField(max_length=20, unique=True)
+class Transaction(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, primary_key=True)
+    txn_ref = models.CharField(max_length=42, unique=True)
     asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
-    sender = models.CharField(max_length=58)
+    sender = models.CharField(max_length=58, null=True, blank=True)
+    txn_type = models.CharField(
+        max_length=50, choices=TransactionType.choices, default=TransactionType.PAYMENT_LINK
+    )
     recipient = models.CharField(max_length=58)
-    txn_hash = models.TextField()
+    txn_hash = models.TextField(null=True, blank=True)
     amount = models.DecimalField(max_digits=16, decimal_places=4)
     status = models.CharField(
         max_length=50, choices=TransactionStatus.choices, default=TransactionStatus.PENDING
     )
     timestamp = models.DateTimeField(default=timezone.now)
 
-    class Meta:
-        abstract = True
-
     def __str__(self) -> str:
         return f"Txn {self.txn_ref}"
-
-
-class PaymentLinkTransaction(BaseTransaction):
-    payment_link = models.ForeignKey(
-        PaymentLink, on_delete=models.DO_NOTHING, null=True, related_name="transactions"
-    )

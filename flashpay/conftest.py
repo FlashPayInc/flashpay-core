@@ -32,3 +32,12 @@ def test_account() -> Any:
     )
     auth_token = RefreshToken.for_user(account)
     return (account, auth_token)
+
+
+@pytest.fixture
+def test_opted_in_account() -> Any:
+    account = Account.objects.create(
+        address="J7ZIYHAHBSNHO5SDR44WY3R4GKSBA6DWJGNUNYB2F3SNMEU2WAVY6OTFNQ", is_verified=True
+    )
+    auth_token = RefreshToken.for_user(account)
+    return (account, auth_token)

@@ -20,6 +20,7 @@ class Asset(BaseModel):
     short_name = models.CharField(max_length=20)
     long_name = models.CharField(max_length=100)
     image_url = models.URLField()
+    decimal = models.PositiveIntegerField(default=1)
 
     def __str__(self) -> str:
         return self.long_name
