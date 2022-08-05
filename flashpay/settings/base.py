@@ -6,6 +6,7 @@ import environ
 from algosdk.v2client.algod import AlgodClient
 from algosdk.v2client.indexer import IndexerClient
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Initialise environ class
@@ -32,6 +33,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "rest_framework",
     "cloudinary",
+    "huey.contrib.djhuey",
 ]
 
 LOCAL_APPS = ["flashpay.apps.core", "flashpay.apps.account", "flashpay.apps.payments"]
@@ -212,6 +214,16 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(hours=1),
 }
 
+HUEY = {
+    "name": "flashpay-core",
+    "url": env("REDIS_URL"),
+    "immediate_use_memory": False,
+    "immediate": False,
+    "consumer": {
+        "workers": 4,
+        "worker_type": "thread",
+    },
+}
 FLASHPAY_MASTER_WALLET = "ZTFRJ36LCYELJMIHLK3CLXA7CAQX6T5T3DFWWXOAT462HXLBZCSUWJCXIY"
 DEFAULT_PAYMENT_LINK_IMAGE = (
     "https://asset.cloudinary.com/flashpay/f6e11bc25a974729eb5fe362024e2c0d"

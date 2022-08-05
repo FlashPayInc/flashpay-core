@@ -68,6 +68,7 @@ jobs:
       - name: Run Code Analysis
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
+          REDIS_URL: 'redis://localhost:6379'
           DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
           SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
           CONN_MAX_AGE: 60
@@ -92,6 +93,15 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       #----------------------------------------------
@@ -147,6 +157,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
+          REDIS_URL: 'redis://localhost:6379'
           DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
           SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
           CONN_MAX_AGE: 60
