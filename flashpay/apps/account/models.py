@@ -22,6 +22,6 @@ class Setting(BaseModel):
 
 
 class APIKey(BaseModel):
-    account = models.OneToOneField(Account, on_delete=models.CASCADE, related_name="api_keys")
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="api_keys")
     secret_key = models.CharField(max_length=100)
     public_key = models.CharField(max_length=100)

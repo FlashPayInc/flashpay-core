@@ -4,7 +4,36 @@ from algosdk.encoding import is_valid_address
 
 from rest_framework import serializers
 
+from flashpay.apps.account.models import Account, APIKey
+from flashpay.apps.account.utils import generate_api_key
 from flashpay.apps.core.utils import decrypt_fernet_message
+
+
+class APIKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = APIKey
+        fields = ("secret_key", "public_key", "network")
+
+
+class CreateAPIKeySerializer(APIKeySerializer):
+    class Meta(APIKeySerializer.Meta):
+        read_only_fields = ("secret_key", "public_key")
+
+    def validate(self, attrs: Any) -> Any:
+        address = self.context["request"].user.id
+        network = attrs.get("network", "mainnet")
+        account = Account.objects.filter(address=address)
+        if not account.exists():
+            raise serializers.ValidationError(detail="Account not found")
+        # If API Key exists, the system deletes the keys
+        api_key = APIKey.objects.filter(account__address=address, network=network)
+        if api_key.exists():
+            api_key.delete()
+        secret_key, public_key = generate_api_key(address, network)
+        attrs["account"] = account.first()
+        attrs["secret_key"] = secret_key
+        attrs["public_key"] = public_key
+        return super().validate(attrs)
 
 
 class BaseAccountSerializer(serializers.Serializer):
