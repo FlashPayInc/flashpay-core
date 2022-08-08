@@ -9,9 +9,9 @@ ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
 
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
+        "flashpay.apps.account.authentication.CustomJWTAuthentication",
     ),
     "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
     "PAGE_SIZE": 10,

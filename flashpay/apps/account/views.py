@@ -10,7 +10,7 @@ from django.db.models import QuerySet
 
 from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListCreateAPIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -181,10 +181,8 @@ class AccountSetUpView(GenericAPIView):
 
 
 class APIKeyView(ListCreateAPIView):
-    permission_classes: Sequence["_PermissionClass"] = [IsAuthenticated]
-
     def get_queryset(self) -> QuerySet:
-        return APIKey.objects.filter(account__address=self.request.user.id)
+        return APIKey.objects.filter(account=self.request.user)  # type: ignore
 
     def get_serializer_class(self) -> Type["BaseSerializer"]:
         if self.request.method == "POST":

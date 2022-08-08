@@ -8,7 +8,7 @@ from algosdk.constants import ADDRESS_LEN
 from django.db import models
 from django.db.models import Sum
 
-from flashpay.apps.core.models import BaseModel
+from flashpay.apps.core.models import BaseModel, Network
 
 
 class TransactionStatus(models.TextChoices):
@@ -80,6 +80,10 @@ class Transaction(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    network = models.CharField(max_length=20, choices=Network.choices, default=Network.MAINNET)
+
+    class Meta:
+        abstract = True
 
     def __str__(self) -> str:
         return f"Transaction {self.txn_reference}"

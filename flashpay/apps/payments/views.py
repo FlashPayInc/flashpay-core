@@ -15,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from flashpay.apps.account.authentication import CustomJWTAuthentication, SecretKeyAuthentication
 from flashpay.apps.core.paginators import TimeStampOrderedCustomCursorPagination
 from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import (
@@ -33,9 +34,12 @@ logger = logging.getLogger(__name__)
 
 class PaymentLinkView(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [CustomJWTAuthentication, SecretKeyAuthentication]
 
     def get_queryset(self) -> QuerySet:
-        return PaymentLink.objects.filter(account__address=self.request.user.id)
+        return PaymentLink.objects.filter(
+            account=self.request.user, network=self.request.network  # type: ignore
+        )
 
     def get_serializer_class(self) -> Type["BaseSerializer"]:
         if self.request.method == "POST":
@@ -71,11 +75,16 @@ class PaymentLinkView(ListCreateAPIView):
 class PaymentLinkDetailView(RetrieveUpdateAPIView):
     queryset = PaymentLink.objects.get_queryset()
     permission_classes = [IsAuthenticated]
+    authentication_classes = [CustomJWTAuthentication, SecretKeyAuthentication]
     serializer_class = PaymentLinkSerializer
 
     def get_object(self) -> Any:
         queryset = self.filter_queryset(self.get_queryset())
-        filter_kwargs = {"uid": self.kwargs["uid"], "account__address": self.request.user.id}
+        filter_kwargs = {
+            "uid": self.kwargs["uid"],
+            "account": self.request.user,
+            "network": self.request.network,
+        }
         return get_object_or_404(queryset, **filter_kwargs)
 
     def retrieve(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
@@ -119,11 +128,13 @@ class TransactionsView(ListCreateAPIView):
     serializer_class = TransactionSerializer
     pagination_class = TimeStampOrderedCustomCursorPagination
     permission_classes = [IsAuthenticated]
+    authentication_classes = [CustomJWTAuthentication, SecretKeyAuthentication]
 
     def get_queryset(self) -> QuerySet:
         payment_link_uid = self.request.query_params.get("payment_link", None)
         qs = Transaction.objects.filter(
-            recipient=self.request.user.id,
+            recipient=self.request.user.address,
+            network=self.request.network,
         )
         if payment_link_uid:
             payment_link = get_object_or_404(PaymentLink, uid=payment_link_uid)

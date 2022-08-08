@@ -14,7 +14,6 @@ from rest_framework.serializers import (
     ValidationError,
 )
 
-from flashpay.apps.account.models import Account
 from flashpay.apps.core.serializers import AssetSerializer
 from flashpay.apps.payments.models import PaymentLink, Transaction
 from flashpay.apps.payments.utils import check_if_address_opted_in_asa, generate_txn_reference
@@ -63,8 +62,10 @@ class CreatePaymentLinkSerializer(ModelSerializer):
                 detail={"amount": "Amount cannot be less than or equal to zero."}
             )
         # Attach Account creating the payment link
-        account = Account.objects.get(address=self.context["request"].user.id)
+        request = self.context["request"]
+        account = request.user
         attrs["account"] = account
+        attrs["network"] = request.network
         return super().validate(attrs)
 
 

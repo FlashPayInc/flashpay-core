@@ -14,6 +14,7 @@ from flashpay.apps.payments.models import PaymentLink, Transaction
 
 @pytest.mark.django_db
 def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
+    """Tests PaymentLink CRUD Endpoints without Authentication."""
     # Create Payment Link
     response1 = api_client.post("/api/payment-links/")
     assert response1.status_code == 401
@@ -38,7 +39,59 @@ def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_payment_link_crud(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
+def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_account: Any) -> None:
+    """
+    Tests Payment Link CRUD Endpoints with secret key authentication.
+    """
+    mainnet_api_key = api_key_account[1]
+    api_client.credentials(HTTP_X_SECRET_KEY=mainnet_api_key.secret_key)
+
+    asset = Asset.objects.create(
+        asa_id=1, short_name="ALGO", long_name="Algorand", image_url="https://hi.com/algo"
+    )
+    data = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 40}
+    response = api_client.post("/api/payment-links/", data=data)
+    assert response.status_code == 201
+    assert "Payment Link Created Successfully" in response.data["message"]
+
+    # check that the created link is present in db
+    payment_link = PaymentLink.objects.first()
+    assert payment_link is not None
+
+    # retrieve all links
+    response = api_client.get("/api/payment-links/")
+    assert response.status_code == 200
+    assert len(response.data["data"]["results"]) == 1
+
+    # Retreive Payment Link
+    response = api_client.get(f"/api/payment-links/{payment_link.uid}")
+    assert response.status_code == 200
+    assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
+    assert response.data["message"] is None
+
+    # Retrieve Payment Link 404
+    response = api_client.get("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
+    assert response.status_code == 404
+    assert "No PaymentLink matches the given query." in response.data["message"]
+
+    # Active | Inactive Update Test
+    response = api_client.patch(f"/api/payment-links/{payment_link.uid}")
+    assert response.status_code == 200
+    assert response.data["data"]["is_active"] is False
+    assert "Payment Link Updated" in response.data["message"]
+
+    # Fetch Transactions Endpoint
+    response = api_client.get(f"/api/payment-links/{payment_link.uid}/transactions")
+    assert response.status_code == 200
+    assert len(response.data["data"]["results"]) == 0
+    assert "Transactions for payment link returned successfully" in response.data["message"]
+
+
+@pytest.mark.django_db
+def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: Any) -> None:
+    """
+    Tests Payment Link CRUD Endpoints with JWT Authentication.
+    """
     auth_token = test_account[1]
     api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
 
