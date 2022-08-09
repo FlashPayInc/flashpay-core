@@ -46,7 +46,7 @@ def test_payment_link_crud(api_client: APIClient, test_account: Tuple[Account, A
         short_name="ALGO",
         long_name="Algorand",
         image_url="https://hi.com/algo",
-        decimal=6,
+        decimals=6,
     )
     data = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 40}
     response = api_client.post("/api/payment-links/", data=data)
@@ -98,7 +98,7 @@ def test_create_payment_link_no_amount_and_zero_amount(
         short_name="ALGO",
         long_name="Algorand",
         image_url="https://hi.com/algo",
-        decimal=6,
+        decimals=6,
     )
     data = {"name": "Test", "description": "test", "asset": asset.uid}
     response = api_client.post("/api/payment-links/", data=data)
@@ -125,7 +125,7 @@ def test_initialize_transaction_invalid_address(
         short_name="ALGO",
         long_name="Algorand",
         image_url="https://hi.com/algo",
-        decimal=6,
+        decimals=6,
     )
     payment_link = PaymentLink.objects.create(
         name="Test Link", description="test", asset=asset, amount=200, account=test_account[0]
@@ -139,7 +139,7 @@ def test_initialize_transaction_invalid_address(
         "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
         "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
     }
-    response = api_client.post("/api/payment-links/transactions/init", data=data)
+    response = api_client.post("/api/payment-links/transactions", data=data)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
     assert response.data["data"]["recipient"][0] == "Not a valid address"
@@ -157,7 +157,7 @@ def test_initialize_transaction_wrong_amount(
         short_name="ALGO",
         long_name="Algorand",
         image_url="https://hi.com/algo",
-        decimal=6,
+        decimals=6,
     )
     payment_link = PaymentLink.objects.create(
         name="Test Link",
@@ -176,7 +176,7 @@ def test_initialize_transaction_wrong_amount(
         "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
         "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
     }
-    response = api_client.post("/api/payment-links/transactions/init", data=data)
+    response = api_client.post("/api/payment-links/transactions", data=data)
     assert response.status_code == 400
 
 
@@ -193,7 +193,7 @@ def test_initialize_transaction_recipient_not_opted_in(
         short_name="USDt",
         long_name="Tether USDt",
         image_url="https://hi.com/usdt",
-        decimal=6,
+        decimals=6,
     )
 
     payment_link = PaymentLink.objects.create(
@@ -212,7 +212,7 @@ def test_initialize_transaction_recipient_not_opted_in(
         "recipient": payment_link.account.address,  # type: ignore
         "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
     }
-    response = api_client.post("/api/payment-links/transactions/init", data=data)
+    response = api_client.post("/api/payment-links/transactions", data=data)
     assert response.status_code == 400
 
 
@@ -226,7 +226,7 @@ def test_initialize_transaction(api_client: APIClient, test_account: Tuple[Accou
         short_name="ALGO",
         long_name="Algorand",
         image_url="https://hi.com/algo",
-        decimal=6,
+        decimals=6,
     )
     payment_link = PaymentLink.objects.create(
         name="Test Link", description="test", asset=asset, amount=200, account=test_account[0]
@@ -253,7 +253,7 @@ def test_initialize_transaction(api_client: APIClient, test_account: Tuple[Accou
         "recipient": payment_link.account.address,  # type: ignore
         "sender": "XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     }
-    response = api_client.post("/api/payment-links/transactions/init", data=data)
+    response = api_client.post("/api/payment-links/transactions", data=data)
     assert response.status_code == 201
 
     # check that the created link is present in db
@@ -286,7 +286,7 @@ def test_verify_transaction_usdc(
         short_name="USDC",
         long_name="USDC",
         image_url="https://hi.com/usdc",
-        decimal=6,
+        decimals=6,
     )
 
     # Create Payment Link
@@ -331,7 +331,7 @@ def test_verify_transaction_usdt(
         short_name="USDt",
         long_name="Tether USDt",
         image_url="https://hi.com/usdt",
-        decimal=6,
+        decimals=6,
     )
 
     # Create Payment Link
@@ -374,7 +374,7 @@ def test_verify_transaction_algo(api_client: APIClient, test_account: Tuple[Acco
         short_name="ALGO",
         long_name="Algorand",
         image_url="https://hi.com/algo",
-        decimal=6,
+        decimals=6,
     )
 
     # Create Payment Link
@@ -420,7 +420,7 @@ def test_verify_transaction_with_wrong_txn_hash_and_txn_note(
         short_name="CHOICE",
         long_name="Choice Coin",
         image_url="https://hi.com/choice-coin",
-        decimal=2,
+        decimals=2,
     )
 
     # Create Payment Link

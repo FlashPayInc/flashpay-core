@@ -55,14 +55,18 @@ class PaymentLink(BaseModel):
 
 
 class Transaction(models.Model):
-    uid = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    txn_ref = models.CharField(max_length=42, unique=True)
+    uid = models.UUIDField(default=uuid.uuid4, primary_key=True, null=False, blank=False)
+    txn_ref = models.CharField(max_length=42, unique=True, null=False, blank=False)
     asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
-    sender = models.CharField(max_length=58, null=True, blank=True)
+    sender = models.CharField(max_length=58, null=False, blank=False)
     txn_type = models.CharField(
-        max_length=50, choices=TransactionType.choices, default=TransactionType.PAYMENT_LINK
+        max_length=50,
+        choices=TransactionType.choices,
+        default=TransactionType.PAYMENT_LINK,
+        null=False,
+        blank=False,
     )
-    recipient = models.CharField(max_length=58)
+    recipient = models.CharField(max_length=58, null=False, blank=False)
     txn_hash = models.TextField(null=True, blank=True)
     amount = models.DecimalField(max_digits=16, decimal_places=4)
     status = models.CharField(

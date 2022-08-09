@@ -25,7 +25,7 @@ def test_verify_transactions_task(
         short_name="USDC",
         long_name="USDC",
         image_url="https://hi.com/usdc",
-        decimal=6,
+        decimals=6,
     )
 
     # Create Payment Link

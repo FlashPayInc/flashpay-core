@@ -22,6 +22,7 @@ from flashpay.apps.payments.serializers import (
     TransactionSerializer,
     VerifyTransactionSerializer,
 )
+from flashpay.apps.payments.utils import verify_txn
 
 if TYPE_CHECKING:
     from rest_framework.serializers import BaseSerializer
@@ -113,13 +114,13 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
         )
 
 
-class TransactionView(ListCreateAPIView):
+class TransactionsView(ListCreateAPIView):
     serializer_class = TransactionSerializer
     pagination_class = TimeStampOrderedCustomCursorPagination
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self) -> QuerySet:
-        payment_link_uid = self.request.GET.get("payment_link", None)
+        payment_link_uid = self.request.query_params.get("payment_link", None)
         qs = Transaction.objects.filter(
             recipient=self.request.user.id,
         )
@@ -171,11 +172,12 @@ class VerifyTransactionView(GenericAPIView):
 
         tx_note = api_response["transaction"].get("note")
         txn_ref = b64decode(tx_note).decode()
-        transactions = Transaction.objects.filter(
-            txn_ref=txn_ref, status=TransactionStatus.PENDING
-        )
 
-        if not transactions.exists():
+        try:
+            transaction = Transaction.objects.get(
+                txn_ref=txn_ref
+            )
+        except Transaction.DoesNotExist:
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
@@ -185,77 +187,40 @@ class VerifyTransactionView(GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        transaction = transactions.first()
-
-        # check if transaction type of 'axfer' i.e transferring algo assets
-        # or 'pay' i.e transferring algo
-        if (api_response["transaction"]["tx-type"] != "axfer") and (
-            api_response["transaction"]["tx-type"] != "pay"
-        ):
+        # Check if transaction has already been verified
+        if transaction.status != TransactionStatus.PENDING:
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
+                    "message": "Transaction has already been verified",  # noqa: E501
                     "data": None,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if api_response["transaction"]["tx-type"] == "axfer":
-            recipient = api_response["transaction"]["asset-transfer-transaction"]["receiver"]
-            amount = api_response["transaction"]["asset-transfer-transaction"]["amount"]
-            asset_id = api_response["transaction"]["asset-transfer-transaction"]["asset-id"]
+
+
+        txn = api_response["transaction"]
+
+        if verify_txn(transaction=transaction, txn=txn):
+            # update transaction status and transaction hash.
+            transaction.status = TransactionStatus.SUCCESS
+            transaction.txn_hash = txid
+            transaction.save(update_fields=["status", "txn_hash"])
+            return Response(
+                data={
+                    "status_code": status.HTTP_200_OK,
+                    "message": "Transaction verified successfully",
+                    "data": None,
+                },
+                status=status.HTTP_200_OK,
+            )
         else:
-            recipient = api_response["transaction"]["payment-transaction"]["receiver"]
-            amount = api_response["transaction"]["payment-transaction"]["amount"]
-            asset_id = 0
-
-        # check if the sender of the txn is the same as the one provided.
-        if api_response["transaction"]["sender"] != transaction.sender:  # type: ignore
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
+                    "message": "Transaction could not be verified due to bad transaction provided.",  # noqa: E501
                     "data": None,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # check if the receiver of the txn is same as the one provided.
-        if recipient != transaction.recipient:  # type: ignore
-            return Response(
-                data={
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
-                    "data": None,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # check if the txn asset and amount is same as the one provided.
-        if (
-            amount != (transaction.amount * (10**transaction.asset.decimal))  # type: ignore
-        ) or (
-            asset_id != (transaction.asset.asa_id)  # type: ignore
-        ):
-            return Response(
-                data={
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "An error occured while setting up your account due to bad transaction provided.",  # noqa: E501
-                    "data": None,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # update transaction status and transaction hash.
-        transaction.status = TransactionStatus.SUCCESS  # type: ignore
-        transaction.txn_hash = txid  # type: ignore
-        transaction.save(update_fields=["status", "txn_hash"])  # type: ignore
-        return Response(
-            data={
-                "status_code": status.HTTP_200_OK,
-                "message": "Transaction verified successfully",
-                "data": None,
-            },
-            status=status.HTTP_200_OK,
-        )

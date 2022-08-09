@@ -16,7 +16,7 @@ from rest_framework.serializers import (
 from flashpay.apps.account.models import Account
 from flashpay.apps.core.serializers import AssetSerializer
 from flashpay.apps.payments.models import PaymentLink, Transaction
-from flashpay.apps.payments.utils import check_opted_in, generate_txn_ref
+from flashpay.apps.payments.utils import check_if_opted_in_asa, generate_txn_ref
 
 
 class PaymentLinkSerializer(ModelSerializer):
@@ -61,19 +61,32 @@ class TransactionSerializer(ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = "__all__"
-        read_only_fields = ["txn_hash", "txn_ref", "timestamp", "uid", "status"]
+        fields = [
+            "txn_ref",
+            "asset",
+            "sender",
+            "txn_type",
+            "recipient",
+            "txn_hash",
+            "amount",
+            "status",
+            "timestamp",
+            "payment_link",
+        ]
+        read_only_fields = ["txn_hash", "txn_ref", "timestamp", "status"]
 
     def create(self, validated_data: Any) -> Any:
         uid = validated_data.pop("payment_link", None)
         validated_data["txn_ref"] = generate_txn_ref(uid=uid)
         return super().create(validated_data)
 
-    def validate_payment_link(self, value: Any) -> Any:
-        payment_link = PaymentLink.objects.filter(uid=value)
-        if not payment_link.exists():
+    def validate_payment_link(self, value: uuid) -> Any:
+       try:
+           payment_link = PaymentLink.objects.get(uid=value)
+       except PaymentLink.DoesNotExist:
             raise ValidationError("Payment link does not exist")
-        return value
+        else:
+            return value
 
     def validate_amount(self, value: Any) -> Any:
         if value <= 0:
@@ -92,7 +105,7 @@ class TransactionSerializer(ModelSerializer):
 
     def validate(self, attrs: Any) -> Any:
 
-        if not check_opted_in(attrs["recipient"], attrs["asset"].asa_id, settings.ALGOD_CLIENT):
+        if not check_if_opted_in_asa(attrs["recipient"], attrs["asset"].asa_id):
             raise ValidationError({"recipient": "recipient is not opted in to the asset."})
 
         if attrs["txn_type"] == "payment_link":
