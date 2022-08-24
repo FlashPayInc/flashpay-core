@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Any, Dict
 
 from rest_framework import status
@@ -5,8 +6,11 @@ from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
+logger = getLogger(__name__)
+
 
 def custom_exception_handler(exception: APIException, context: Dict[str, Any]) -> Response:
+    logger.exception("An exception occurred while handling request with context: %s", str(context))
     exception_response = exception_handler(exception, context)
 
     # exceptions not handled by DRF.

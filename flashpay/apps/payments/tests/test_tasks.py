@@ -1,5 +1,6 @@
 from typing import Any, Tuple
 from uuid import UUID
+
 import pytest
 
 from django.shortcuts import get_object_or_404
@@ -14,7 +15,8 @@ from flashpay.apps.payments.tasks import verify_transactions
 
 @pytest.mark.django_db
 def test_verify_transactions_task(
-    api_client: APIClient, test_opted_in_account: Tuple[Account, Any]
+    api_client: APIClient,
+    test_opted_in_account: Tuple[Account, Any],
 ) -> None:
     auth_token = test_opted_in_account[1]
     api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
@@ -29,7 +31,7 @@ def test_verify_transactions_task(
     )
 
     # Create Payment Link
-    payment_link = PaymentLink.objects.create(
+    payment_link: PaymentLink = PaymentLink.objects.create(
         uid=UUID("399c37cb-d282-4aed-8917-38a033a1ad5b"),
         name="Test Link",
         description="test",
@@ -39,11 +41,12 @@ def test_verify_transactions_task(
     )
 
     # fp_399c37cbd2824aed891738a033a1ad5b_03ef72
+    # https://testnet.algoexplorer.io/tx/F23RSTSTWEWMX3LWZ3ZEUHRWFPOIXXAPOWS2DJ7YHK5NC3VKKTDA
     tx_ref = "fp_" + payment_link.uid.hex + "_03ef72"
 
     # Create Payment link transaction
     transaction = Transaction.objects.create(
-        txn_ref=tx_ref,
+        txn_reference=tx_ref,
         txn_type="payment_link",
         amount=10,
         asset=asset,

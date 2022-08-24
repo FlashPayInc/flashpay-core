@@ -59,7 +59,6 @@ class HealthCheckThirdPartyView(GenericAPIView):
 
 
 class AssetView(ListAPIView):
-
     queryset = Asset.objects.all()
     serializer_class = AssetSerializer
     pagination_class = None

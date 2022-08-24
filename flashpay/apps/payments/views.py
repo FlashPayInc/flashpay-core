@@ -3,6 +3,7 @@ from base64 import b64decode
 from typing import TYPE_CHECKING, Any, Dict, Type
 
 from algosdk.error import IndexerHTTPError
+
 from django.conf import settings
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
@@ -22,7 +23,7 @@ from flashpay.apps.payments.serializers import (
     TransactionSerializer,
     VerifyTransactionSerializer,
 )
-from flashpay.apps.payments.utils import verify_txn
+from flashpay.apps.payments.utils import verify_transaction
 
 if TYPE_CHECKING:
     from rest_framework.serializers import BaseSerializer
@@ -126,7 +127,7 @@ class TransactionsView(ListCreateAPIView):
         )
         if payment_link_uid:
             payment_link = get_object_or_404(PaymentLink, uid=payment_link_uid)
-            qs = qs.filter(txn_ref__icontains=payment_link.uid.hex)
+            qs = qs.filter(txn_reference__icontains=payment_link.uid.hex)
         return qs
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -134,7 +135,7 @@ class TransactionsView(ListCreateAPIView):
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
-                "message": "Transactions for payment link returned successfully",
+                "message": "Transactions returned successfully",
                 "data": response.data,
             },
             status.HTTP_200_OK,
@@ -144,44 +145,42 @@ class TransactionsView(ListCreateAPIView):
 class VerifyTransactionView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VerifyTransactionSerializer
+    indexer_client = settings.INDEXER_CLIENT
+    transaction_serializer = TransactionSerializer
 
-    def post(self, request: Request, format: Any = None) -> Response:
-        indexer_client = settings.INDEXER_CLIENT
-        serializer = self.get_serializer(data=request.data)
+    def post(self, request: Request, **kwargs: Dict[str, Any]) -> Response:
+        serializer = self.get_serializer(data={"txn_reference": kwargs["txn_reference"]})
         serializer.is_valid(raise_exception=True)
-        txid = serializer.validated_data["txid"]
+        txn_reference = serializer.validated_data["txn_reference"]
 
         try:
-            api_response = indexer_client.transaction(
-                txid=txid,
-            )
-        except IndexerHTTPError as e:
-            logger.error(
-                f"Error finding transaction with"
-                f'transaction id: {serializer.validated_data["txid"]}'
-                f"due to: {str(e)}"
-            )
-            return Response(
-                data={
-                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "message": "Could not find transaction",
-                    "data": None,
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        tx_note = api_response["transaction"].get("note")
-        txn_ref = b64decode(tx_note).decode()
-
-        try:
-            transaction = Transaction.objects.get(
-                txn_ref=txn_ref
-            )
+            transaction = Transaction.objects.get(txn_reference=txn_reference)
         except Transaction.DoesNotExist:
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Transaction does not exist",  # noqa: E501
+                    "message": "Transaction reference is invalid",
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            api_response = self.indexer_client.search_transactions(
+                note_prefix=txn_reference.encode(),
+                address=transaction.sender,
+                address_role="sender",
+            )
+        except IndexerHTTPError as e:
+            logger.error(
+                f"Error finding transaction with "
+                f'transaction id: {serializer.validated_data["txn_reference"]} '
+                f"due to: {str(e)}"
+            )
+            return Response(
+                data={
+                    "status_code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Transaction reference is invalid",
                     "data": None,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -191,36 +190,41 @@ class VerifyTransactionView(GenericAPIView):
         if transaction.status != TransactionStatus.PENDING:
             return Response(
                 data={
-                    "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Transaction has already been verified",  # noqa: E501
-                    "data": None,
+                    "status_code": status.HTTP_409_CONFLICT,
+                    "message": "Transaction has already been verified",
+                    "data": self.transaction_serializer(transaction).data,
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_409_CONFLICT,
             )
 
-
-
-        txn = api_response["transaction"]
-
-        if verify_txn(transaction=transaction, txn=txn):
-            # update transaction status and transaction hash.
+        # verify tx & update status and tx_hash accordingly
+        txns_match = list(
+            filter(
+                lambda tx: b64decode(tx.get("note")).decode() == txn_reference,
+                api_response["transactions"],
+            )
+        )
+        if verify_transaction(db_txn=transaction, onchain_txn=txns_match[0]):
             transaction.status = TransactionStatus.SUCCESS
-            transaction.txn_hash = txid
+            transaction.txn_hash = txn_reference
             transaction.save(update_fields=["status", "txn_hash"])
             return Response(
                 data={
                     "status_code": status.HTTP_200_OK,
                     "message": "Transaction verified successfully",
-                    "data": None,
+                    "data": self.transaction_serializer(transaction).data,
                 },
                 status=status.HTTP_200_OK,
             )
         else:
+            transaction.status = TransactionStatus.FAILED
+            transaction.txn_hash = txn_reference
+            transaction.save(update_fields=["status", "txn_hash"])
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Transaction could not be verified due to bad transaction provided.",  # noqa: E501
-                    "data": None,
+                    "message": "Transaction verification failed",
+                    "data": self.transaction_serializer(transaction).data,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

@@ -6,7 +6,6 @@ import environ
 from algosdk.v2client.algod import AlgodClient
 from algosdk.v2client.indexer import IndexerClient
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Initialise environ class

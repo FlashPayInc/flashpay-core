@@ -1,5 +1,6 @@
 from typing import Any, Tuple
 from uuid import UUID
+
 import pytest
 
 from django.conf import settings
@@ -31,7 +32,7 @@ def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
 
     # Fetch Transactions Endpoint
     response6 = api_client.get(
-        "/api/payment-links/transactions?payment_link=4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c"
+        "/api/transactions?payment_link=4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c"
     )
     assert response6.status_code == 401
 
@@ -80,10 +81,10 @@ def test_payment_link_crud(api_client: APIClient, test_account: Tuple[Account, A
     assert "Payment Link Updated" in response.data["message"]
 
     # Fetch Transactions Endpoint
-    response = api_client.get(f"/api/payment-links/transactions?payment_link={payment_link.uid}")
+    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 0
-    assert "Transactions for payment link returned successfully" in response.data["message"]
+    assert "Transactions returned successfully" in response.data["message"]
 
 
 @pytest.mark.django_db
@@ -139,7 +140,7 @@ def test_initialize_transaction_invalid_address(
         "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
         "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
     }
-    response = api_client.post("/api/payment-links/transactions", data=data)
+    response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
     assert response.data["data"]["recipient"][0] == "Not a valid address"
@@ -176,7 +177,7 @@ def test_initialize_transaction_wrong_amount(
         "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
         "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
     }
-    response = api_client.post("/api/payment-links/transactions", data=data)
+    response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 400
 
 
@@ -212,7 +213,7 @@ def test_initialize_transaction_recipient_not_opted_in(
         "recipient": payment_link.account.address,  # type: ignore
         "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
     }
-    response = api_client.post("/api/payment-links/transactions", data=data)
+    response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 400
 
 
@@ -233,14 +234,14 @@ def test_initialize_transaction(api_client: APIClient, test_account: Tuple[Accou
     )
 
     # Fetch all transactions Endpoint
-    response = api_client.get("/api/payment-links/transactions")
+    response = api_client.get("/api/transactions")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 0
-    assert "Transactions for payment link returned successfully" in response.data["message"]
+    assert "Transactions returned successfully" in response.data["message"]
 
     # Fetch payment link transactions 404
     response = api_client.get(
-        "/api/payment-links/transactions?payment_link=04e88d1a-ee77-4c46-86a9-6636859c6571"
+        "/api/transactions?payment_link=04e88d1a-ee77-4c46-86a9-6636859c6571"
     )
     assert response.status_code == 404
 
@@ -253,7 +254,7 @@ def test_initialize_transaction(api_client: APIClient, test_account: Tuple[Accou
         "recipient": payment_link.account.address,  # type: ignore
         "sender": "XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     }
-    response = api_client.post("/api/payment-links/transactions", data=data)
+    response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 201
 
     # check that the created link is present in db
@@ -261,16 +262,16 @@ def test_initialize_transaction(api_client: APIClient, test_account: Tuple[Accou
     assert transaction is not None
 
     # Fetch all transactions Endpoint
-    response = api_client.get("/api/payment-links/transactions")
+    response = api_client.get("/api/transactions")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
-    assert "Transactions for payment link returned successfully" in response.data["message"]
+    assert "Transactions returned successfully" in response.data["message"]
 
     # Fetch payment link transactions Endpoint
-    response = api_client.get(f"/api/payment-links/transactions?payment_link={payment_link.uid}")
+    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
-    assert "Transactions for payment link returned successfully" in response.data["message"]
+    assert "Transactions returned successfully" in response.data["message"]
 
 
 @pytest.mark.django_db
@@ -304,7 +305,7 @@ def test_verify_transaction_usdc(
 
     # Create Payment link transaction
     Transaction.objects.create(
-        txn_ref=tx_ref,
+        txn_reference=tx_ref,
         txn_type="payment_link",
         amount=10,
         asset=asset,
@@ -313,8 +314,8 @@ def test_verify_transaction_usdc(
     )
 
     # Verify transaction
-    data = {"txid": "F23RSTSTWEWMX3LWZ3ZEUHRWFPOIXXAPOWS2DJ7YHK5NC3VKKTDA"}
-    response = api_client.post("/api/payment-links/transactions/verify", data=data)
+    # https://testnet.algoexplorer.io/tx/F23RSTSTWEWMX3LWZ3ZEUHRWFPOIXXAPOWS2DJ7YHK5NC3VKKTDA
+    response = api_client.post(f"/api/transactions/verify/{tx_ref}")
     assert response.status_code == 200
 
 
@@ -349,7 +350,7 @@ def test_verify_transaction_usdt(
 
     # Create Payment link transaction
     Transaction.objects.create(
-        txn_ref=tx_ref,
+        txn_reference=tx_ref,
         txn_type="payment_link",
         amount=2,
         asset=asset,
@@ -358,8 +359,8 @@ def test_verify_transaction_usdt(
     )
 
     # Verify transaction
-    data = {"txid": "LB5YIOTIYDY34EOC4DMWPELL2VYPWFGQIF2JKINBA6FPPOKXEA4Q"}
-    response = api_client.post("/api/payment-links/transactions/verify", data=data)
+    # https://testnet.algoexplorer.io/tx/LB5YIOTIYDY34EOC4DMWPELL2VYPWFGQIF2JKINBA6FPPOKXEA4Q
+    response = api_client.post(f"/api/transactions/verify/{tx_ref}")
     assert response.status_code == 200
 
 
@@ -393,7 +394,7 @@ def test_verify_transaction_algo(api_client: APIClient, test_account: Tuple[Acco
 
     # Create Payment link transaction
     Transaction.objects.create(
-        txn_ref=tx_ref,
+        txn_reference=tx_ref,
         txn_type="payment_link",
         amount=10,
         asset=asset,
@@ -402,8 +403,8 @@ def test_verify_transaction_algo(api_client: APIClient, test_account: Tuple[Acco
     )
 
     # Verify transaction
-    data = {"txid": "EPOEON47C2NANNPC5FJLRU42R7SZ6KT5HDO5B6OEJE7G4VQBDXIA"}
-    response = api_client.post("/api/payment-links/transactions/verify", data=data)
+    # https://testnet.algoexplorer.io/tx/EPOEON47C2NANNPC5FJLRU42R7SZ6KT5HDO5B6OEJE7G4VQBDXIA
+    response = api_client.post(f"/api/transactions/verify/{tx_ref}")
     assert response.status_code == 200
 
 
@@ -438,22 +439,19 @@ def test_verify_transaction_with_wrong_txn_hash_and_txn_note(
 
     # Create Payment link transaction
     Transaction.objects.create(
-        txn_ref=tx_ref,
+        txn_reference=tx_ref,
         txn_type="payment_link",
         amount=20,
         asset=asset,
-        recipient=str(payment_link.account.address),  # type: ignore
+        recipient=test_opted_in_account[0].address,
         sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     )
 
-    # Verify transaction with wrong transaction hash
-    data = {"txid": "MTVWLYQHHTN42AHGX7FKGCDKT362G3TSHH54JDJKAG3W4DER6AFG"}
-    response = api_client.post("/api/payment-links/transactions/verify", data=data)
-    assert response.status_code == 500
-    assert "Could not find transaction" in response.data["message"]
-
-    # Verify transaction with wrong transaction note
-    data = {"txid": "PQMVRN7OD5DQQJLWC53TLRKMMJGLSRU4K7CVGKHPXHZCXMP2KDFQ"}
-    response = api_client.post("/api/payment-links/transactions/verify", data=data)
-    assert response.status_code == 400
-    assert "Transaction does not exist" in response.data["message"]
+    # Verify transaction with wrong tx reference
+    tx_ref = "fp_" + payment_link.uid.hex + "_03eabc"
+    response = api_client.post(f"/api/payment-links/transactions/verify/{tx_ref}")
+    assert response.status_code == 404
+    assert (
+        "Not Found: /api/payment-links/transactions/verify/fp_3fe0321ec44e44adb03a0348ad7d6f78_03eabc"  # noqa: E501
+        in response.json()["message"]  # type: ignore  # noqa: E501 it returns JsonResponse not Response so there's no `.data`
+    )

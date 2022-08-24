@@ -1,8 +1,9 @@
 from typing import Any
+from uuid import UUID
 
 from algosdk.encoding import is_valid_address
+
 from django.conf import settings
-from django.shortcuts import get_object_or_404
 
 from rest_framework.serializers import (
     CharField,
@@ -16,19 +17,30 @@ from rest_framework.serializers import (
 from flashpay.apps.account.models import Account
 from flashpay.apps.core.serializers import AssetSerializer
 from flashpay.apps.payments.models import PaymentLink, Transaction
-from flashpay.apps.payments.utils import check_if_opted_in_asa, generate_txn_ref
+from flashpay.apps.payments.utils import check_if_address_opted_in_asa, generate_txn_reference
+from flashpay.apps.payments.validators import IsValidAlgorandAddress
 
 
 class PaymentLinkSerializer(ModelSerializer):
     asset = AssetSerializer()
     image_url = SerializerMethodField()
 
-    def get_image_url(self, obj: PaymentLink) -> Any:
-        return obj.image.url if bool(obj.image) else settings.DEFAULT_PAYMENT_LINK_IMAGE
+    def get_image_url(self, obj: PaymentLink) -> str:
+        return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
 
     class Meta:
         model = PaymentLink
-        exclude = ("deleted_at", "account")
+        fields = (
+            "asset",
+            "name",
+            "description",
+            "slug",
+            "amount",
+            "image_url",
+            "is_active",
+            "has_fixed_amount",
+            "is_one_time",
+        )
 
 
 class CreatePaymentLinkSerializer(ModelSerializer):
@@ -61,8 +73,8 @@ class TransactionSerializer(ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = [
-            "txn_ref",
+        fields = (
+            "txn_reference",
             "asset",
             "sender",
             "txn_type",
@@ -70,20 +82,22 @@ class TransactionSerializer(ModelSerializer):
             "txn_hash",
             "amount",
             "status",
-            "timestamp",
+            "created_at",
+            "updated_at",
             "payment_link",
-        ]
-        read_only_fields = ["txn_hash", "txn_ref", "timestamp", "status"]
+        )
+        read_only_fields = ("txn_hash", "txn_reference", "created_at", "updated_at", "status")
+        validators = [IsValidAlgorandAddress(fields=["recipient", "sender"])]
 
     def create(self, validated_data: Any) -> Any:
-        uid = validated_data.pop("payment_link", None)
-        validated_data["txn_ref"] = generate_txn_ref(uid=uid)
+        payment_link_uid = validated_data.pop("payment_link", None)
+        validated_data["txn_reference"] = generate_txn_reference(uid=payment_link_uid)
         return super().create(validated_data)
 
-    def validate_payment_link(self, value: uuid) -> Any:
-       try:
-           payment_link = PaymentLink.objects.get(uid=value)
-       except PaymentLink.DoesNotExist:
+    def validate_payment_link(self, value: UUID) -> Any:
+        try:
+            PaymentLink.objects.get(uid=value)
+        except PaymentLink.DoesNotExist:
             raise ValidationError("Payment link does not exist")
         else:
             return value
@@ -104,8 +118,7 @@ class TransactionSerializer(ModelSerializer):
         return value
 
     def validate(self, attrs: Any) -> Any:
-
-        if not check_if_opted_in_asa(attrs["recipient"], attrs["asset"].asa_id):
+        if not check_if_address_opted_in_asa(attrs["recipient"], attrs["asset"].asa_id):
             raise ValidationError({"recipient": "recipient is not opted in to the asset."})
 
         if attrs["txn_type"] == "payment_link":
@@ -113,7 +126,11 @@ class TransactionSerializer(ModelSerializer):
             # Payment_link field is required if transaction type is payment_link
             if not uid:
                 raise ValidationError({"payment_link": "field is required"})
-            payment_link = get_object_or_404(PaymentLink, uid=uid, is_active=True)
+            try:
+                payment_link = PaymentLink.objects.get(uid=uid)
+            except PaymentLink.DoesNotExist:
+                raise ValidationError("Invalid payment link provided")
+
             # Check if payment link has fixed amount and amount is same
             if payment_link.has_fixed_amount and attrs["amount"] != payment_link.amount:
                 raise ValidationError({"amount": "payment link has fixed amount"})
@@ -124,4 +141,4 @@ class TransactionSerializer(ModelSerializer):
 
 
 class VerifyTransactionSerializer(Serializer):
-    txid = CharField(write_only=True)
+    txn_reference = CharField(max_length=42)

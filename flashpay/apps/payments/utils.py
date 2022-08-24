@@ -1,20 +1,25 @@
 import secrets
-from typing import Any
-from uuid import uuid4
+from typing import Optional
+from uuid import UUID, uuid4
 
 from django.conf import settings
 
 from flashpay.apps.payments.models import Transaction
 
 
-def generate_txn_ref(uid: Any = None) -> str:
-    if not uid:
+def generate_txn_reference(uid: Optional[UUID] = None) -> str:
+    """Generate transaction reference using a payment link's pk
+    (if transaction is for payment link) or a random uuid is used as a placeholder.
+    """
+    if uid is None:
         uid = uuid4()
     return f"fp_{uid.hex}_{secrets.token_hex(3)}"
 
 
-def check_if_opted_in_asa(address: str, asset_id: int) -> bool:
+def check_if_address_opted_in_asa(address: str, asset_id: int) -> bool:
+    """Checks if the provided address is opted into a given ASA."""
     algod_client = settings.ALGOD_CLIENT
+    # asset_id = 0  is used for Algorand native token.
     if asset_id == 0:
         return True
     account_info = algod_client.account_info(address)
@@ -24,23 +29,26 @@ def check_if_opted_in_asa(address: str, asset_id: int) -> bool:
     return False
 
 
-def verify_txn(transaction: Transaction, txn: dict) -> bool:
-    if txn["tx-type"] == "axfer":
-        recipient = txn["asset-transfer-transaction"]["receiver"]
-        amount = txn["asset-transfer-transaction"]["amount"]
-        asset_id = txn["asset-transfer-transaction"]["asset-id"]
-    elif txn["tx-type"] == "pay":
-        recipient = txn["payment-transaction"]["receiver"]
-        amount = txn["payment-transaction"]["amount"]
+def verify_transaction(db_txn: Transaction, onchain_txn: dict) -> bool:
+    """Verifies that a transaction entry in the db conforms with its
+    onchain transaction information.
+    """
+    if onchain_txn["tx-type"] == "axfer":
+        recipient = onchain_txn["asset-transfer-transaction"]["receiver"]
+        amount = onchain_txn["asset-transfer-transaction"]["amount"]
+        asset_id = onchain_txn["asset-transfer-transaction"]["asset-id"]
+    elif onchain_txn["tx-type"] == "pay":
+        recipient = onchain_txn["payment-transaction"]["receiver"]
+        amount = onchain_txn["payment-transaction"]["amount"]
         asset_id = 0
     else:
         return False
 
     if (
-        transaction.recipient == recipient
-        and transaction.sender == txn["sender"]
-        and transaction.asset.asa_id == asset_id  # type: ignore
-        and (transaction.amount * (10**transaction.asset.decimals) == amount)  # type: ignore
+        db_txn.recipient == recipient
+        and db_txn.sender == onchain_txn["sender"]
+        and db_txn.asset.asa_id == asset_id
+        and (db_txn.amount * (10**db_txn.asset.decimals) == amount)
     ):
         return True
     return False
