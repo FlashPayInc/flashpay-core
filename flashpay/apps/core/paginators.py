@@ -6,4 +6,4 @@ class CustomCursorPagination(CursorPagination):
 
 
 class TimeStampOrderedCustomCursorPagination(CursorPagination):
-    ordering = "-timestamp"
+    ordering = "-created_at"

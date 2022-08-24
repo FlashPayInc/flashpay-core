@@ -1,10 +1,12 @@
 import secrets
+import uuid
 from decimal import Decimal
 from typing import Iterable, Optional
 
+from algosdk.constants import ADDRESS_LEN
+
 from django.db import models
 from django.db.models import Sum
-from django.utils import timezone
 
 from flashpay.apps.core.models import BaseModel
 
@@ -15,12 +17,21 @@ class TransactionStatus(models.TextChoices):
     FAILED = "failed"
 
 
+class TransactionType(models.TextChoices):
+    PAYMENT_LINK = "payment_link"
+
+
 class PaymentLink(BaseModel):
-    asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
-    account = models.ForeignKey("account.Account", on_delete=models.DO_NOTHING, null=True)
-    name = models.CharField(max_length=100)
-    description = models.TextField(null=True)
-    slug = models.CharField(max_length=50, unique=True, null=True)
+    asset = models.ForeignKey("core.Asset", on_delete=models.PROTECT, null=False, blank=False)
+    account = models.ForeignKey(
+        to="account.Account",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=False,
+    )
+    name = models.CharField(max_length=100, blank=False, null=False)
+    description = models.TextField(null=True, blank=True)
+    slug = models.CharField(max_length=50, unique=True, null=False, blank=False)
     amount = models.DecimalField(max_digits=16, decimal_places=4, null=False, blank=False)
     image = models.ImageField(upload_to="payment-links", null=True)
     is_active = models.BooleanField(default=True)
@@ -43,32 +54,32 @@ class PaymentLink(BaseModel):
 
     @property
     def total_revenue(self) -> Decimal:
-        total: Optional[Decimal] = self.transactions.filter(
-            status=TransactionStatus.SUCCESS
+        total: Optional[Decimal] = Transaction.objects.filter(
+            txn_reference__icontains=self.uid.hex, status=TransactionStatus.SUCCESS
         ).aggregate(Sum("amount"))["amount__sum"]
         return total if total is not None else Decimal("0.0000")
 
 
-class BaseTransaction(models.Model):
-    txn_ref = models.CharField(max_length=20, unique=True)
-    asset = models.ForeignKey("core.Asset", on_delete=models.DO_NOTHING, null=True)
-    sender = models.CharField(max_length=58)
-    recipient = models.CharField(max_length=58)
-    txn_hash = models.TextField()
-    amount = models.DecimalField(max_digits=16, decimal_places=4)
+class Transaction(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, primary_key=True, null=False, blank=False)
+    txn_reference = models.CharField(max_length=42, unique=True, null=False, blank=False)
+    asset = models.ForeignKey("core.Asset", on_delete=models.PROTECT, null=False)
+    sender = models.CharField(max_length=ADDRESS_LEN, null=False, blank=False)
+    txn_type = models.CharField(
+        max_length=50,
+        choices=TransactionType.choices,
+        default=TransactionType.PAYMENT_LINK,
+        null=False,
+        blank=False,
+    )
+    recipient = models.CharField(max_length=ADDRESS_LEN, null=False, blank=False)
+    txn_hash = models.TextField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=16, decimal_places=4, null=False, blank=False)
     status = models.CharField(
         max_length=50, choices=TransactionStatus.choices, default=TransactionStatus.PENDING
     )
-    timestamp = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        abstract = True
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f"Txn {self.txn_ref}"
-
-
-class PaymentLinkTransaction(BaseTransaction):
-    payment_link = models.ForeignKey(
-        PaymentLink, on_delete=models.DO_NOTHING, null=True, related_name="transactions"
-    )
+        return f"Transaction {self.txn_reference}"

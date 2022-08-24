@@ -25,6 +25,7 @@ cloudinary = "^1.29.0"
 dj3-cloudinary-storage = "^0.0.6"
 djangorestframework-simplejwt = "^5.2.0"
 cryptography = "^37.0.4"
+django-huey = "^1.1.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
@@ -88,7 +89,7 @@ warn_unused_ignores = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
 
 [[tool.mypy.overrides]]
-module = ["environ", "*.migrations.*","algosdk.*", "cryptography.*", "rest_framework_simplejwt.*"]
+module = ["environ", "*.migrations.*","algosdk.*", "cryptography.*", "rest_framework_simplejwt.*","huey.*"]
 ignore_missing_imports = true
 ignore_errors = true
 
