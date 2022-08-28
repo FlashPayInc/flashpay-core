@@ -67,11 +67,12 @@ class AccountSetUpSerializer(BaseAccountSerializer):
             raise serializers.ValidationError("Invalid payload format provided.")
 
         # now validate the address
-        if is_valid_address(address) is False:
+        cleaned_address = address.strip()
+        if is_valid_address(cleaned_address) is False:
             raise serializers.ValidationError("Invalid algorand address provided.")
 
         return {
-            "address": address.strip(),
+            "address": cleaned_address,
             "nonce": nonce.strip(),
             "txid": txid.strip(),
         }
