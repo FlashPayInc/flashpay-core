@@ -1,8 +1,6 @@
 from typing import Any
 from uuid import UUID
 
-from algosdk.encoding import is_valid_address
-
 from django.conf import settings
 
 from rest_framework.serializers import (
@@ -40,10 +38,8 @@ class CreatePaymentLinkSerializer(ModelSerializer):
                 detail={"amount": "Amount cannot be less than or equal to zero."}
             )
         # Attach Account creating the payment link
-        request = self.context["request"]
-        account = request.user
-        attrs["account"] = account
-        attrs["network"] = request.network
+        attrs["account"] = self.context["request"].user
+        attrs["network"] = self.context["request"].network
         return super().validate(attrs)
 
 
@@ -63,14 +59,23 @@ class TransactionSerializer(ModelSerializer):
             "status",
             "created_at",
             "updated_at",
+            "network",
             "payment_link",
         )
-        read_only_fields = ("txn_hash", "txn_reference", "created_at", "updated_at", "status")
+        read_only_fields = (
+            "txn_hash",
+            "txn_reference",
+            "created_at",
+            "updated_at",
+            "network",
+            "status",
+        )
         validators = [IsValidAlgorandAddress(fields=["recipient", "sender"])]
 
     def create(self, validated_data: Any) -> Any:
         payment_link_uid = validated_data.pop("payment_link", None)
         validated_data["txn_reference"] = generate_txn_reference(uid=payment_link_uid)
+        validated_data["network"] = self.context["request"].network
         return super().create(validated_data)
 
     def validate_payment_link(self, value: UUID) -> Any:
@@ -84,16 +89,6 @@ class TransactionSerializer(ModelSerializer):
     def validate_amount(self, value: Any) -> Any:
         if value <= 0:
             raise ValidationError("Amount cannot be lesser than 0")
-        return value
-
-    def validate_recipient(self, value: Any) -> Any:
-        if not is_valid_address(value):
-            raise ValidationError("Not a valid address")
-        return value
-
-    def validate_sender(self, value: Any) -> Any:
-        if not is_valid_address(value):
-            raise ValidationError("Not a valid address")
         return value
 
     def validate(self, attrs: Any) -> Any:
@@ -119,6 +114,26 @@ class TransactionSerializer(ModelSerializer):
         return super().validate(attrs)
 
 
+class TransactionDetailSerializer(ModelSerializer):
+    asset = AssetSerializer()
+
+    class Meta:
+        model = Transaction
+        fields = (
+            "txn_reference",
+            "txn_type",
+            "asset",
+            "sender",
+            "recipient",
+            "txn_hash",
+            "amount",
+            "status",
+            "created_at",
+            "updated_at",
+            "network",
+        )
+
+
 class PaymentLinkSerializer(ModelSerializer):
     asset = AssetSerializer()
     image_url = SerializerMethodField()
@@ -126,9 +141,6 @@ class PaymentLinkSerializer(ModelSerializer):
 
     def get_image_url(self, obj: PaymentLink) -> str:
         return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
-
-    # def get_transactions(self, obj: PaymentLink):
-    #     return obj.transactions()
 
     class Meta:
         model = PaymentLink
@@ -142,6 +154,7 @@ class PaymentLinkSerializer(ModelSerializer):
             "is_active",
             "has_fixed_amount",
             "is_one_time",
+            "network",
             "transactions",
         )
 

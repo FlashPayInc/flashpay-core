@@ -24,6 +24,7 @@ from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionS
 from flashpay.apps.payments.serializers import (
     CreatePaymentLinkSerializer,
     PaymentLinkSerializer,
+    TransactionDetailSerializer,
     TransactionSerializer,
     VerifyTransactionSerializer,
 )
@@ -126,7 +127,6 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
 
 class TransactionsView(ListCreateAPIView):
-    serializer_class = TransactionSerializer
     pagination_class = TimeStampOrderedCustomCursorPagination
     authentication_classes = [
         PublicKeyAuthentication,
@@ -134,6 +134,11 @@ class TransactionsView(ListCreateAPIView):
         CustomJWTAuthentication,
     ]
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self) -> Type["BaseSerializer"]:
+        if self.request.method == "POST":
+            return TransactionSerializer
+        return TransactionDetailSerializer
 
     def get_authenticators(self) -> List["BaseAuthentication"]:
         if self.request.method == "GET":
@@ -179,7 +184,7 @@ class VerifyTransactionView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VerifyTransactionSerializer
     indexer_client = settings.INDEXER_CLIENT
-    transaction_serializer = TransactionSerializer
+    transaction_serializer = TransactionDetailSerializer
     authentication_classes = [PublicKeyAuthentication, SecretKeyAuthentication]
 
     def post(self, request: Request, **kwargs: Dict[str, Any]) -> Response:
