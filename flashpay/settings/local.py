@@ -5,17 +5,7 @@ DEBUG = True
 
 SECRET_KEY = env("SECRET_KEY", default="!!!SET DJANGO_SECRET_KEY!!!")
 
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
-
-
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
-    ),
-    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
-    "PAGE_SIZE": 10,
-}
+ALLOWED_HOSTS = ["*"]
 
 SIMPLE_JWT = {
     "USER_ID_FIELD": "address",

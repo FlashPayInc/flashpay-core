@@ -1,22 +1,25 @@
 import logging
 from base64 import b64encode
-from typing import TYPE_CHECKING, Optional, Sequence, Type
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 from algosdk.error import IndexerHTTPError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.conf import settings
+from django.db.models import QuerySet
 
 from rest_framework import status
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListCreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from flashpay.apps.account.models import Account
+from flashpay.apps.account.models import Account, APIKey
 from flashpay.apps.account.serializers import (
     AccountSetUpSerializer,
     AccountWalletAuthenticationSerializer,
+    APIKeySerializer,
+    CreateAPIKeySerializer,
 )
 
 if TYPE_CHECKING:
@@ -174,4 +177,36 @@ class AccountSetUpView(GenericAPIView):
                 "data": None,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class APIKeyView(ListCreateAPIView):
+    def get_queryset(self) -> QuerySet:
+        return APIKey.objects.filter(account=self.request.user)  # type: ignore[misc]
+
+    def get_serializer_class(self) -> Type["BaseSerializer"]:
+        if self.request.method == "POST":
+            return CreateAPIKeySerializer
+        return APIKeySerializer
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().list(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": status.HTTP_200_OK,
+                "message": "API Keys fetched successfully.",
+                "data": response.data,
+            },
+            status.HTTP_200_OK,
+        )
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().create(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": status.HTTP_201_CREATED,
+                "message": "API Key created successfully.",
+                "data": response.data,
+            },
+            status.HTTP_201_CREATED,
         )

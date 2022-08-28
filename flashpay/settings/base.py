@@ -187,13 +187,14 @@ LOGGING = {
 # THIRD-PARTY SETTINGS
 # ==============================================================================
 REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication",
+        "flashpay.apps.account.authentication.CustomJWTAuthentication",
     ),
+    "UNAUTHENTICATED_USER": "flashpay.apps.account.authentication.AnonymousUser",
 }
 
 CORS_ALLOW_ALL_ORIGINS = True

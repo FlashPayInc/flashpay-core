@@ -13,4 +13,4 @@ run-dev:
 	python manage.py runserver
 
 test:
-	pytest --cov -xs
+	pytest --cov

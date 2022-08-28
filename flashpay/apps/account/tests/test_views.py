@@ -1,4 +1,5 @@
 from base64 import b64encode
+from typing import Any, Tuple
 
 import pytest
 from algosdk.account import generate_account
@@ -7,6 +8,8 @@ from cryptography.fernet import Fernet
 from django.conf import settings
 
 from rest_framework.test import APIClient
+
+from flashpay.apps.account.models import Account
 
 
 @pytest.mark.django_db
@@ -103,3 +106,25 @@ def test_account_setup_view_errors(api_client: APIClient) -> None:
     response = api_client.post("/api/accounts/init", data={"payload": b64_encrypted_payload})
     assert response.status_code == 400
     assert "Your account has already been set up." in response.data["message"]
+
+
+@pytest.mark.django_db
+def test_api_key_views(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
+    auth_token = test_account[1]
+    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+    # Test Net APIKey
+    response = api_client.post("/api/accounts/api-keys", data={"network": "testnet"})
+    assert response.status_code == 201
+    assert response.data["data"]["network"] == "testnet"
+    assert "sk_test" in response.data["data"]["secret_key"]
+    assert "pk_test" in response.data["data"]["public_key"]
+    # Main Net APIKey
+    response1 = api_client.post("/api/accounts/api-keys")
+    assert response1.status_code == 201
+    assert response1.data["data"]["network"] == "mainnet"
+    assert "sk_test" not in response1.data["data"]["secret_key"]
+    assert "pk_test" not in response1.data["data"]["public_key"]
+    # Fetch APIKey
+    response2 = api_client.get("/api/accounts/api-keys")
+    assert response2.status_code == 200
+    assert len(response2.data["data"]["results"]) == 2
