@@ -182,7 +182,7 @@ class AccountSetUpView(GenericAPIView):
 
 class APIKeyView(ListCreateAPIView):
     def get_queryset(self) -> QuerySet:
-        return APIKey.objects.filter(account=self.request.user)  # type: ignore
+        return APIKey.objects.filter(account=self.request.user)  # type: ignore[misc]
 
     def get_serializer_class(self) -> Type["BaseSerializer"]:
         if self.request.method == "POST":

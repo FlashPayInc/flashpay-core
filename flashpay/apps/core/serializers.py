@@ -6,4 +6,10 @@ from flashpay.apps.core.models import Asset
 class AssetSerializer(ModelSerializer):
     class Meta:
         model = Asset
-        fields = "__all__"
+        fields = (
+            "asa_id",
+            "short_name",
+            "long_name",
+            "image_url",
+            "decimals",
+        )

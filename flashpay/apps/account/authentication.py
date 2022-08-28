@@ -13,6 +13,11 @@ from flashpay.apps.core.models import Network
 
 
 class PublicKeyAuthentication(BaseAuthentication):
+    www_authenticate_realm = "api"
+
+    def authenticate_header(self, request: Request) -> Optional[str]:
+        return f'X-PUBLIC-KEY realm="{self.www_authenticate_realm}"'
+
     def authenticate(self, request: Request) -> Optional[Tuple[Account, Optional[str]]]:
         public_key = request.META.get("HTTP-X-PUBLIC-KEY")
         if not public_key:
@@ -20,26 +25,31 @@ class PublicKeyAuthentication(BaseAuthentication):
         try:
             api_key = APIKey.objects.select_related("account").get(public_key=public_key)
             account = api_key.account
-            request.network = Network(api_key.network)  # type: ignore
+            request.network = Network(api_key.network)  # type: ignore[attr-defined]
         except APIKey.DoesNotExist:
             raise AuthenticationFailed("Invalid public key provided")
-        return (account, None)
+        return account, None
 
 
 class SecretKeyAuthentication(BaseAuthentication):
+    www_authenticate_realm = "api"
+
+    def authenticate_header(self, request: Request) -> Optional[str]:
+        return f'X-SECRET-KEY realm="{self.www_authenticate_realm}"'
+
     def authenticate(self, request: Request) -> Optional[Tuple[Account, Optional[str]]]:
-        secret_key = request.META.get("HTTP_X_SECRET_KEY")
+        secret_key = request.META.get("HTTP-X-SECRET-KEY")
         if not secret_key:
             return None
         try:
             api_key = APIKey.objects.select_related("account").get(secret_key=secret_key)
-            request.network = Network(api_key.network)  # type: ignore
+            request.network = Network(api_key.network)  # type: ignore[attr-defined]
         except APIKey.DoesNotExist:
             raise AuthenticationFailed("Invalid secret key provided")
-        return (api_key.account, None)
+        return api_key.account, None
 
 
-class CustomJWTAuthentication(JWTAuthentication):  # type: ignore
+class CustomJWTAuthentication(JWTAuthentication):  # type: ignore[no-any-unimported]
     def __init__(self, *args: Dict, **kwargs: Dict) -> None:
         super().__init__(*args, **kwargs)
         self.user_model = Account
@@ -61,5 +71,29 @@ class CustomJWTAuthentication(JWTAuthentication):  # type: ignore
         if response is None:
             return response
         user, validated_token = response
-        request.network = Network(user.network)  # type: ignore
+        request.network = Network(user.network)  # type: ignore[attr-defined]
         return user, validated_token
+
+
+class AnonymousUser:
+    id = None
+    pk = None
+    address = ""
+    is_verified = False
+
+    def __str__(self) -> str:
+        return "AnonymousAccount"
+
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, self.__class__)
+
+    def __hash__(self) -> int:
+        return 1  # instances always return the same hash value
+
+    @property
+    def is_anonymous(self) -> bool:
+        return True
+
+    @property
+    def is_authenticated(self) -> bool:
+        return False

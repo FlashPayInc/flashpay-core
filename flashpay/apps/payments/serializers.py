@@ -20,28 +20,6 @@ from flashpay.apps.payments.utils import check_if_address_opted_in_asa, generate
 from flashpay.apps.payments.validators import IsValidAlgorandAddress
 
 
-class PaymentLinkSerializer(ModelSerializer):
-    asset = AssetSerializer()
-    image_url = SerializerMethodField()
-
-    def get_image_url(self, obj: PaymentLink) -> str:
-        return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
-
-    class Meta:
-        model = PaymentLink
-        fields = (
-            "asset",
-            "name",
-            "description",
-            "slug",
-            "amount",
-            "image_url",
-            "is_active",
-            "has_fixed_amount",
-            "is_one_time",
-        )
-
-
 class CreatePaymentLinkSerializer(ModelSerializer):
     class Meta:
         model = PaymentLink
@@ -135,10 +113,37 @@ class TransactionSerializer(ModelSerializer):
             # Check if payment link has fixed amount and amount is same
             if payment_link.has_fixed_amount and attrs["amount"] != payment_link.amount:
                 raise ValidationError({"amount": "payment link has fixed amount"})
-            if attrs["recipient"] != payment_link.account.address:  # type: ignore
+            if attrs["recipient"] != payment_link.account.address:  # type: ignore[union-attr]
                 raise ValidationError({"recipient": "recipient does not have a payment link"})
 
         return super().validate(attrs)
+
+
+class PaymentLinkSerializer(ModelSerializer):
+    asset = AssetSerializer()
+    image_url = SerializerMethodField()
+    transactions = TransactionSerializer(many=True)
+
+    def get_image_url(self, obj: PaymentLink) -> str:
+        return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
+
+    # def get_transactions(self, obj: PaymentLink):
+    #     return obj.transactions()
+
+    class Meta:
+        model = PaymentLink
+        fields = (
+            "asset",
+            "name",
+            "description",
+            "slug",
+            "amount",
+            "image_url",
+            "is_active",
+            "has_fixed_amount",
+            "is_one_time",
+            "transactions",
+        )
 
 
 class VerifyTransactionSerializer(Serializer):

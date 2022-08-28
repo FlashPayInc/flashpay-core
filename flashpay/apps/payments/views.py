@@ -1,6 +1,5 @@
 import logging
-from base64 import b64decode
-from typing import TYPE_CHECKING, Any, Dict, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Type
 
 from algosdk.error import IndexerHTTPError
 
@@ -15,7 +14,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from flashpay.apps.account.authentication import CustomJWTAuthentication, SecretKeyAuthentication
+from flashpay.apps.account.authentication import (
+    CustomJWTAuthentication,
+    PublicKeyAuthentication,
+    SecretKeyAuthentication,
+)
 from flashpay.apps.core.paginators import TimeStampOrderedCustomCursorPagination
 from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import (
@@ -27,6 +30,7 @@ from flashpay.apps.payments.serializers import (
 from flashpay.apps.payments.utils import verify_transaction
 
 if TYPE_CHECKING:
+    from rest_framework.authentication import BaseAuthentication
     from rest_framework.serializers import BaseSerializer
 
 logger = logging.getLogger(__name__)
@@ -37,9 +41,7 @@ class PaymentLinkView(ListCreateAPIView):
     authentication_classes = [CustomJWTAuthentication, SecretKeyAuthentication]
 
     def get_queryset(self) -> QuerySet:
-        return PaymentLink.objects.filter(
-            account=self.request.user, network=self.request.network  # type: ignore
-        )
+        return PaymentLink.objects.filter(account=self.request.user, network=self.request.network)  # type: ignore[misc]  # noqa: E501
 
     def get_serializer_class(self) -> Type["BaseSerializer"]:
         if self.request.method == "POST":
@@ -47,8 +49,7 @@ class PaymentLinkView(ListCreateAPIView):
         return PaymentLinkSerializer
 
     def create(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
-        serializer_class = self.get_serializer_class()
-        serializer = serializer_class(data=request.data, context={"request": request})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
@@ -127,13 +128,23 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 class TransactionsView(ListCreateAPIView):
     serializer_class = TransactionSerializer
     pagination_class = TimeStampOrderedCustomCursorPagination
+    authentication_classes = [
+        PublicKeyAuthentication,
+        SecretKeyAuthentication,
+        CustomJWTAuthentication,
+    ]
     permission_classes = [IsAuthenticated]
-    authentication_classes = [CustomJWTAuthentication, SecretKeyAuthentication]
+
+    def get_authenticators(self) -> List["BaseAuthentication"]:
+        if self.request.method == "GET":
+            return super(TransactionsView, self).get_authenticators()
+
+        return [PublicKeyAuthentication(), SecretKeyAuthentication()]
 
     def get_queryset(self) -> QuerySet:
         payment_link_uid = self.request.query_params.get("payment_link", None)
         qs = Transaction.objects.filter(
-            recipient=self.request.user.address,
+            recipient=self.request.user.address,  # type: ignore[union-attr]
             network=self.request.network,
         )
         if payment_link_uid:
@@ -152,12 +163,24 @@ class TransactionsView(ListCreateAPIView):
             status.HTTP_200_OK,
         )
 
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().create(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": status.HTTP_201_CREATED,
+                "message": "Transaction created successfully",
+                "data": response.data,
+            },
+            status.HTTP_201_CREATED,
+        )
+
 
 class VerifyTransactionView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VerifyTransactionSerializer
     indexer_client = settings.INDEXER_CLIENT
     transaction_serializer = TransactionSerializer
+    authentication_classes = [PublicKeyAuthentication, SecretKeyAuthentication]
 
     def post(self, request: Request, **kwargs: Dict[str, Any]) -> Response:
         serializer = self.get_serializer(data={"txn_reference": kwargs["txn_reference"]})
@@ -209,13 +232,7 @@ class VerifyTransactionView(GenericAPIView):
             )
 
         # verify tx & update status and tx_hash accordingly
-        txns_match = list(
-            filter(
-                lambda tx: b64decode(tx.get("note")).decode() == txn_reference,
-                api_response["transactions"],
-            )
-        )
-        if verify_transaction(db_txn=transaction, onchain_txn=txns_match[0]):
+        if verify_transaction(db_txn=transaction, onchain_txn=api_response["transactions"][0]):
             transaction.status = TransactionStatus.SUCCESS
             transaction.txn_hash = txn_reference
             transaction.save(update_fields=["status", "txn_hash"])

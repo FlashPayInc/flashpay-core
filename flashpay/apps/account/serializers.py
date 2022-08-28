@@ -1,6 +1,8 @@
+import binascii
 from typing import Any, Dict
 
 from algosdk.encoding import is_valid_address
+from cryptography.fernet import InvalidToken
 
 from rest_framework import serializers
 
@@ -44,7 +46,7 @@ class AccountWalletAuthenticationSerializer(BaseAccountSerializer):
         try:
             # we don't need the nonce provided here.
             _, address = decrypted_payload.split(",")
-        except ValueError:
+        except (ValueError, InvalidToken, binascii.Error):
             raise serializers.ValidationError("Invalid payload format provided.")
 
         # now validate the address
@@ -61,7 +63,7 @@ class AccountSetUpSerializer(BaseAccountSerializer):
         decrypted_payload = decrypt_fernet_message(payload)
         try:
             nonce, address, txid = decrypted_payload.split(",")
-        except ValueError:
+        except (ValueError, InvalidToken, binascii.Error):
             raise serializers.ValidationError("Invalid payload format provided.")
 
         # now validate the address

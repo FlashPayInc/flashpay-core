@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 from algosdk.constants import ADDRESS_LEN
 
 from django.db import models
-from django.db.models import Sum
+from django.db.models import QuerySet, Sum
 
 from flashpay.apps.core.models import BaseModel, Network
 
@@ -59,6 +59,9 @@ class PaymentLink(BaseModel):
         ).aggregate(Sum("amount"))["amount__sum"]
         return total if total is not None else Decimal("0.0000")
 
+    def transactions(self) -> QuerySet:
+        return Transaction.objects.filter(txn_reference__icontains=self.uid.hex)
+
 
 class Transaction(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, primary_key=True, null=False, blank=False)
@@ -78,12 +81,9 @@ class Transaction(models.Model):
     status = models.CharField(
         max_length=50, choices=TransactionStatus.choices, default=TransactionStatus.PENDING
     )
+    network = models.CharField(max_length=20, choices=Network.choices, default=Network.MAINNET)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    network = models.CharField(max_length=20, choices=Network.choices, default=Network.MAINNET)
-
-    class Meta:
-        abstract = True
 
     def __str__(self) -> str:
         return f"Transaction {self.txn_reference}"

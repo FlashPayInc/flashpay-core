@@ -194,6 +194,7 @@ REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "flashpay.apps.account.authentication.CustomJWTAuthentication",
     ),
+    "UNAUTHENTICATED_USER": "flashpay.apps.account.authentication.AnonymousUser",
 }
 
 CORS_ALLOW_ALL_ORIGINS = True

@@ -6,13 +6,3 @@ SECRET_KEY = env("DJANGO_SECRET_KEY", default="!!!SET DJANGO_SECRET_KEY!!!")
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "flashpay.apps.account.authentication.CustomJWTAuthentication",
-    ),
-    "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
-    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
-    "PAGE_SIZE": 10,
-}
