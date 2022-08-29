@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.generics import GenericAPIView, ListCreateAPIView, RetrieveUpdateAPIView
+from rest_framework.parsers import BaseParser, FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -24,6 +25,7 @@ from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionS
 from flashpay.apps.payments.serializers import (
     CreatePaymentLinkSerializer,
     PaymentLinkSerializer,
+    TransactionDetailSerializer,
     TransactionSerializer,
     VerifyTransactionSerializer,
 )
@@ -47,6 +49,11 @@ class PaymentLinkView(ListCreateAPIView):
         if self.request.method == "POST":
             return CreatePaymentLinkSerializer
         return PaymentLinkSerializer
+
+    def get_parsers(self) -> List[BaseParser]:
+        if self.request.method == "POST":
+            return [FormParser(), MultiPartParser()]
+        return super().get_parsers()
 
     def create(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         serializer = self.get_serializer(data=request.data)
@@ -126,7 +133,6 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
 
 class TransactionsView(ListCreateAPIView):
-    serializer_class = TransactionSerializer
     pagination_class = TimeStampOrderedCustomCursorPagination
     authentication_classes = [
         PublicKeyAuthentication,
@@ -134,6 +140,11 @@ class TransactionsView(ListCreateAPIView):
         CustomJWTAuthentication,
     ]
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self) -> Type["BaseSerializer"]:
+        if self.request.method == "POST":
+            return TransactionSerializer
+        return TransactionDetailSerializer
 
     def get_authenticators(self) -> List["BaseAuthentication"]:
         if self.request.method == "GET":
@@ -179,7 +190,7 @@ class VerifyTransactionView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VerifyTransactionSerializer
     indexer_client = settings.INDEXER_CLIENT
-    transaction_serializer = TransactionSerializer
+    transaction_serializer = TransactionDetailSerializer
     authentication_classes = [PublicKeyAuthentication, SecretKeyAuthentication]
 
     def post(self, request: Request, **kwargs: Dict[str, Any]) -> Response:

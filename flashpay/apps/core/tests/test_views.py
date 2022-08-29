@@ -2,6 +2,7 @@ from unittest import mock
 
 import pytest
 from algosdk.error import AlgodHTTPError, IndexerHTTPError
+from django.conf import LazySettings
 
 from django.db import DatabaseError
 
@@ -71,3 +72,52 @@ def test_custom_exception_handler_response(api_client: APIClient) -> None:
 def test_assets_view(api_client: APIClient) -> None:
     response = api_client.get("/api/core/assets")
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_update_assets_view_no_auth(api_client: APIClient) -> None:
+    response = api_client.post("/api/core/assets")
+    assert response.status_code == 401
+    assert response.data["message"] == "Missing API Key"
+
+
+@pytest.mark.django_db
+def test_update_assets_view_wrong_auth(api_client: APIClient) -> None:
+    api_client.credentials(HTTP_AUTHORIZATION="Token invalid")
+    response = api_client.post("/api/core/assets")
+    assert response.status_code == 401
+    assert response.data["message"] == "Invalid API Key provided"
+
+
+@pytest.mark.django_db
+def test_update_assets_view(api_client: APIClient, settings: LazySettings) -> None:
+    api_client.credentials(HTTP_AUTHORIZATION=f"Token {settings.ASSETS_UPLOAD_API_KEY}")
+    data = [
+        {
+            "asa_id": 0,
+            "short_name": "ALGO",
+            "long_name": "ALGORAND",
+            "image_url": "https://flashpay.com/img.png",
+            "decimals": 6,
+            "network": "mainnet",
+        },
+        {
+            "asa_id": 100,
+            "short_name": "USDt",
+            "long_name": "Tether USDt",
+            "decimals": 6,
+            "image_url": "https://flashpay.com/img.png",
+            "network": "mainnet",
+        },
+        {
+            "asa_id": 200,
+            "short_name": "USDC",
+            "long_name": "USDC",
+            "decimals": 6,
+            "image_url": "https://flashpay.com/img.png",
+            "network": "mainnet",
+        },
+    ]
+    response = api_client.post("/api/core/assets", data=data, format="json")
+    assert response.status_code == 201
+    assert response.data["message"] == "Assets updated successfully"

@@ -11,5 +11,6 @@ class AssetSerializer(ModelSerializer):
             "short_name",
             "long_name",
             "image_url",
+            "network",
             "decimals",
         )

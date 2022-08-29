@@ -199,7 +199,7 @@ def test_initialize_transaction_invalid_address(
     response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
-    assert response.data["data"]["recipient"][0] == "Not a valid address"
+    assert response.data["data"]["sender"][0] == "Not a valid address"
 
 
 @pytest.mark.django_db

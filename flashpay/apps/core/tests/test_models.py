@@ -10,6 +10,7 @@ def test_create_asset() -> None:
         "short_name": "ALGO",
         "long_name": "ALGORAND",
         "image_url": "https://flashpay.com/img.png",
+        "network": "mainnet",
     }
     asset = Asset.objects.create(**data)
 
@@ -17,4 +18,5 @@ def test_create_asset() -> None:
     assert asset.short_name == data["short_name"]
     assert asset.long_name == data["long_name"]
     assert asset.image_url == data["image_url"]
+    assert asset.network == data["network"]
     assert str(asset) == asset.long_name

@@ -20,10 +20,10 @@ class BaseModel(models.Model):
 
 
 class Asset(BaseModel):
-    asa_id = models.IntegerField()
-    short_name = models.CharField(max_length=20)
-    long_name = models.CharField(max_length=100)
-    image_url = models.URLField()
+    asa_id = models.IntegerField(null=False, blank=False, unique=True)
+    short_name = models.CharField(null=False, blank=False, max_length=20)
+    long_name = models.CharField(null=False, blank=False, max_length=100)
+    image_url = models.URLField(null=False, blank=False)
     decimals = models.PositiveIntegerField(default=1)
 
     def __str__(self) -> str:
