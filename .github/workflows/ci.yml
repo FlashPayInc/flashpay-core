@@ -10,6 +10,7 @@ on:
 
 env:
   ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+  ASSETS_UPLOAD_API_KEY: ${{ secrets.ASSETS_UPLOAD_API_KEY }}
 
 jobs:
    lint:
