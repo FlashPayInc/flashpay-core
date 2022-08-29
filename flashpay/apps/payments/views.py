@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.generics import GenericAPIView, ListCreateAPIView, RetrieveUpdateAPIView
+from rest_framework.parsers import BaseParser, FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -48,6 +49,11 @@ class PaymentLinkView(ListCreateAPIView):
         if self.request.method == "POST":
             return CreatePaymentLinkSerializer
         return PaymentLinkSerializer
+
+    def get_parsers(self) -> List[BaseParser]:
+        if self.request.method == "POST":
+            return [FormParser(), MultiPartParser()]
+        return super().get_parsers()
 
     def create(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         serializer = self.get_serializer(data=request.data)

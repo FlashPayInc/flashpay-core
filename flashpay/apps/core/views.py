@@ -1,4 +1,5 @@
 import logging
+from typing import Any, List
 
 from algosdk.error import AlgodHTTPError, AlgodResponseError, IndexerHTTPError
 
@@ -7,11 +8,13 @@ from django.db import DatabaseError, OperationalError, connection
 from django.http import HttpRequest, JsonResponse
 
 from rest_framework import status
-from rest_framework.generics import GenericAPIView, ListAPIView
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.generics import GenericAPIView, ListCreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from flashpay.apps.account.authentication import AssetsUploadAuthentication
 from flashpay.apps.core.models import Asset
 from flashpay.apps.core.serializers import AssetSerializer
 
@@ -61,10 +64,42 @@ class HealthCheckThirdPartyView(GenericAPIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class AssetView(ListAPIView):
+class AssetView(ListCreateAPIView):
     queryset = Asset.objects.all()
     serializer_class = AssetSerializer
     pagination_class = None
+
+    def get_authenticators(self) -> List[BaseAuthentication]:
+        if self.request.method == "POST":
+            return [AssetsUploadAuthentication()]
+        return []
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        serializer = AssetSerializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {
+                "status_code": status.HTTP_201_CREATED,
+                "message": "Assets updated successfully",
+                # "data": self.get_serializer(self.get_queryset()).data,
+            },
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super(AssetView, self).list(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": response.status_code,
+                "message": "Assets retrieved successfully",
+                "data": response.data,
+            },
+            status=response.status_code,
+            headers=response.headers,
+        )
 
 
 def handler_404(request: HttpRequest, exception: Exception) -> JsonResponse:

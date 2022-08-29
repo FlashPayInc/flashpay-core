@@ -4,6 +4,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.settings import api_settings
 
+from django.conf import settings
+
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
@@ -97,3 +99,25 @@ class AnonymousUser:
     @property
     def is_authenticated(self) -> bool:
         return False
+
+
+class AssetsUploadAPiUser(AnonymousUser):
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+
+class AssetsUploadAuthentication(BaseAuthentication):
+    www_authenticate_realm = "api"
+
+    def authenticate_header(self, request: Request) -> Optional[str]:
+        return f'Token realm="{self.www_authenticate_realm}"'
+
+    def authenticate(self, request: Request) -> Optional[Tuple["AnonymousUser", Any]]:
+        auth_header = request.META.get("HTTP_AUTHORIZATION")
+        if auth_header is None:
+            raise AuthenticationFailed("Missing API Key")
+        api_key = auth_header.split(" ")[-1].strip()
+        if api_key != settings.ASSETS_UPLOAD_API_KEY:
+            raise AuthenticationFailed("Invalid API Key provided")
+        return AssetsUploadAPiUser(), None
