@@ -15,4 +15,8 @@ class Migration(migrations.Migration):
             name='network',
             field=models.CharField(choices=[('mainnet', 'Mainnet'), ('testnet', 'Testnet')], default='mainnet', max_length=20),
         ),
+        migrations.AlterUniqueTogether(
+            name='asset',
+            unique_together={('asa_id', 'network')},
+        ),
     ]

@@ -20,7 +20,7 @@ class BaseModel(models.Model):
 
 
 class Asset(BaseModel):
-    asa_id = models.IntegerField(null=False, blank=False, unique=True)
+    asa_id = models.IntegerField(null=False, blank=False)
     short_name = models.CharField(null=False, blank=False, max_length=20)
     long_name = models.CharField(null=False, blank=False, max_length=100)
     image_url = models.URLField(null=False, blank=False)
@@ -28,3 +28,6 @@ class Asset(BaseModel):
 
     def __str__(self) -> str:
         return self.long_name
+
+    class Meta:
+        unique_together = ("asa_id", "network")
