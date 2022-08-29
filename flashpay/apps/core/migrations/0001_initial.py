@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('deleted_at', models.DateTimeField(null=True)),
-                ('asa_id', models.IntegerField(null=False, blank=False, unique=True)),
+                ('asa_id', models.IntegerField(null=False, blank=False)),
                 ('short_name', models.CharField(max_length=20, null=False, blank=False)),
                 ('long_name', models.CharField(max_length=100, null=False, blank=False)),
                 ('image_url', models.URLField(null=False, blank=False)),
