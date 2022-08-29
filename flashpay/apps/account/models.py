@@ -6,7 +6,7 @@ from flashpay.apps.core.models import BaseModel
 
 
 class Account(BaseModel):
-    address = models.CharField(max_length=ADDRESS_LEN, unique=True)
+    address = models.CharField(null=False, blank=False, max_length=ADDRESS_LEN, unique=True)
     is_verified = models.BooleanField(default=False)
 
     def __str__(self) -> str:
@@ -18,8 +18,13 @@ class Account(BaseModel):
 
 
 class Setting(BaseModel):
-    account = models.OneToOneField(Account, on_delete=models.CASCADE, related_name="settings")
-    email = models.EmailField(null=True)
+    account = models.OneToOneField(
+        Account,
+        related_name="settings",
+        on_delete=models.CASCADE,
+        null=False,
+    )
+    email = models.EmailField(null=True, blank=True)
 
     def __str__(self) -> str:
         return f"Settings For Account {self.account.address}"
@@ -27,6 +32,8 @@ class Setting(BaseModel):
 
 class APIKey(BaseModel):
     # There can only be testnet and mainnet api keys for an account (i.e. two)
-    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="api_keys")
-    secret_key = models.CharField(max_length=100)
-    public_key = models.CharField(max_length=100)
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, null=False, related_name="api_keys"
+    )
+    secret_key = models.CharField(null=False, blank=False, max_length=100)
+    public_key = models.CharField(null=False, blank=False, max_length=100)

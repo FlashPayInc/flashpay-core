@@ -83,7 +83,7 @@ class AssetView(ListCreateAPIView):
             {
                 "status_code": status.HTTP_201_CREATED,
                 "message": "Assets updated successfully",
-                # "data": self.get_serializer(self.get_queryset()).data,
+                "data": self.get_serializer(self.get_queryset(), many=True).data,
             },
             status=status.HTTP_201_CREATED,
             headers=headers,

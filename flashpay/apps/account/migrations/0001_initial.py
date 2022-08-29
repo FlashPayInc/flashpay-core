@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('deleted_at', models.DateTimeField(null=True)),
-                ('address', models.CharField(max_length=58, unique=True)),
+                ('address', models.CharField(max_length=58, unique=True, null=False, blank=False)),
                 ('is_verified', models.BooleanField(default=False)),
             ],
             options={
@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('deleted_at', models.DateTimeField(null=True)),
                 ('email', models.EmailField(max_length=254, null=True)),
-                ('account', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='settings', to='account.account')),
+                ('account', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='settings', to='account.account', null=False)),
             ],
             options={
                 'abstract': False,
@@ -48,9 +48,9 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('deleted_at', models.DateTimeField(null=True)),
-                ('secret_key', models.CharField(max_length=100)),
-                ('public_key', models.CharField(max_length=100)),
-                ('account', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='api_keys', to='account.account')),
+                ('secret_key', models.CharField(max_length=100, null=False, blank=False)),
+                ('public_key', models.CharField(max_length=100, null=False, blank=False)),
+                ('account', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='api_keys', to='account.account', null=False)),
             ],
             options={
                 'abstract': False,
