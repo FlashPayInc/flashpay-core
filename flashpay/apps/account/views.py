@@ -21,6 +21,8 @@ from flashpay.apps.account.serializers import (
     APIKeySerializer,
     CreateAPIKeySerializer,
 )
+from flashpay.apps.account.utils import generate_api_key
+from flashpay.apps.core.models import Network
 
 if TYPE_CHECKING:
     from rest_framework.permissions import _PermissionClass
@@ -167,6 +169,20 @@ class AccountSetUpView(GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # generate api keys
+        mainnet_api_keys = generate_api_key(address=account.address, network=Network.MAINNET)
+        testnet_api_keys = generate_api_key(address=account.address, network=Network.TESTNET)
+        account.api_keys.create(
+            secret_key=mainnet_api_keys[0],
+            public_key=mainnet_api_keys[1],
+            network=Network.MAINNET,
+        )
+        account.api_keys.create(
+            secret_key=testnet_api_keys[0],
+            public_key=testnet_api_keys[1],
+            network=Network.TESTNET,
+        )
 
         account.is_verified = True
         account.save()

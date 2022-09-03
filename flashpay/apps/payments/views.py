@@ -97,17 +97,22 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
     def retrieve(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         payment_link = self.get_object()
-        serializer = self.get_serializer(payment_link)
+        updated_data = self.get_serializer(payment_link).data
+        updated_data["public_key"] = self.get_public_api_key()
+
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
                 "message": None,
-                "data": serializer.data,
+                "data": updated_data,
             }
         )
 
     def put(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         raise MethodNotAllowed("PUT")
+
+    def get_public_api_key(self) -> str:
+        return self.request.user.api_keys.filter(network=self.request.network).first().public_key  # type: ignore  # noqa: E501
 
     def patch(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         payment_link = self.get_object()
@@ -122,11 +127,14 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
             )
         payment_link.is_active = not payment_link.is_active
         payment_link.save()
+
+        updated_data = self.get_serializer(payment_link).data
+        updated_data["public_key"] = self.get_public_api_key()
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
                 "message": "Payment Link Updated",
-                "data": self.get_serializer(payment_link).data,
+                "data": updated_data,
             },
             status.HTTP_200_OK,
         )
