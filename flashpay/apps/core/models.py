@@ -20,7 +20,8 @@ class BaseModel(models.Model):
 
 
 class Asset(BaseModel):
-    asa_id = models.IntegerField(null=False, blank=False)
+    # For Algorand native token, `asa_id` is 0 for mainnet & 1 for testnet.
+    asa_id = models.IntegerField(null=False, blank=False, unique=True)
     short_name = models.CharField(null=False, blank=False, max_length=20)
     long_name = models.CharField(null=False, blank=False, max_length=100)
     image_url = models.URLField(null=False, blank=False)
@@ -28,6 +29,3 @@ class Asset(BaseModel):
 
     def __str__(self) -> str:
         return self.long_name
-
-    class Meta:
-        unique_together = ("asa_id", "network")

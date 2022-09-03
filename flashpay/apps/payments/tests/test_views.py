@@ -50,7 +50,7 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     asset = Asset.objects.create(
         asa_id=1, short_name="ALGO", long_name="Algorand", image_url="https://hi.com/algo"
     )
-    data = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 40}
+    data = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 40}
     response = api_client.post("/api/payment-links/", data=data)
     assert response.status_code == 201
     assert "Payment Link Created Successfully" in response.data["message"]
@@ -103,7 +103,7 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
         image_url="https://hi.com/algo",
         decimals=6,
     )
-    data = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 40}
+    data = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 40}
     response = api_client.post("/api/payment-links/", data=data)
     assert response.status_code == 201
     assert "Payment Link Created Successfully" in response.data["message"]
@@ -156,13 +156,13 @@ def test_create_payment_link_no_amount_and_zero_amount(
         image_url="https://hi.com/algo",
         decimals=6,
     )
-    data = {"name": "Test", "description": "test", "asset": asset.uid}
+    data = {"name": "Test", "description": "test", "asset": asset.asa_id}
     response = api_client.post("/api/payment-links/", data=data)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
     assert response.data["data"]["amount"][0] == "This field is required."
 
-    data2 = {"name": "Test", "description": "test", "asset": asset.uid, "amount": 0}
+    data2 = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 0}
     response = api_client.post("/api/payment-links/", data=data2)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
@@ -190,7 +190,7 @@ def test_initialize_transaction_invalid_address(
 
     data = {
         "amount": 100,
-        "asset": asset.uid,
+        "asset": asset.asa_id,
         "payment_link": payment_link.uid,
         "txn_type": "payment_link",
         "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
@@ -230,7 +230,7 @@ def test_initialize_transaction_wrong_amount(
 
     data = {
         "amount": 50,
-        "asset": asset.uid,
+        "asset": asset.asa_id,
         "payment_link": payment_link.uid,
         "txn_type": "payment_link",
         "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
@@ -269,7 +269,7 @@ def test_initialize_transaction_recipient_not_opted_in(
 
     data = {
         "amount": 50,
-        "asset": asset.uid,
+        "asset": asset.asa_id,
         "payment_link": payment_link.uid,
         "txn_type": "payment_link",
         "recipient": payment_link.account.address,  # type: ignore
@@ -318,7 +318,7 @@ def test_initialize_transaction(
     # Create Payment Link Transaction
     data = {
         "amount": 100,
-        "asset": asset.uid,
+        "asset": asset.asa_id,
         "payment_link": payment_link.uid,
         "txn_type": "payment_link",
         "recipient": payment_link.account.address,  # type: ignore

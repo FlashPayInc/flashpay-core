@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from django.conf import settings
 
+from flashpay.apps.core.models import Network
 from flashpay.apps.payments.models import Transaction
 
 
@@ -19,8 +20,8 @@ def generate_txn_reference(uid: Optional[UUID] = None) -> str:
 def check_if_address_opted_in_asa(address: str, asset_id: int) -> bool:
     """Checks if the provided address is opted into a given ASA."""
     algod_client = settings.ALGOD_CLIENT
-    # asset_id = 0  is used for Algorand native token.
-    if asset_id == 0:
+    # asset_id = 0  || 1 is used for Algorand native token.
+    if asset_id == 0 or asset_id == 1:
         return True
     account_info = algod_client.account_info(address)
     for asset in account_info["assets"]:
@@ -40,7 +41,7 @@ def verify_transaction(db_txn: Transaction, onchain_txn: dict) -> bool:
     elif onchain_txn["tx-type"] == "pay":
         recipient = onchain_txn["payment-transaction"]["receiver"]
         amount = onchain_txn["payment-transaction"]["amount"]
-        asset_id = 0
+        asset_id = 0 if db_txn.network == Network.MAINNET else 1
     else:
         return False
 
