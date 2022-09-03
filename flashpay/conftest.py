@@ -11,6 +11,8 @@ from flashpay.apps.account.models import Account, APIKey
 from flashpay.apps.account.utils import generate_api_key
 from flashpay.apps.core.models import Network
 
+# TODO: Clean up our entire test suite
+
 
 @pytest.fixture
 def api_client() -> APIClient:
@@ -33,6 +35,20 @@ def test_account() -> Any:
         address="4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM",
         is_verified=True,
     )
+    test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
+    main_secret, main_public = generate_api_key(account.address, Network.MAINNET)
+    APIKey.objects.create(
+        secret_key=test_secret,
+        public_key=test_public,
+        account=account,
+        network=Network.TESTNET,
+    )
+    APIKey.objects.create(
+        secret_key=main_secret,
+        public_key=main_public,
+        account=account,
+        network=Network.MAINNET,
+    )
     auth_token = RefreshToken.for_user(account)
     return (account, auth_token)
 
@@ -41,6 +57,20 @@ def test_account() -> Any:
 def test_opted_in_account() -> Any:
     account = Account.objects.create(
         address="J7ZIYHAHBSNHO5SDR44WY3R4GKSBA6DWJGNUNYB2F3SNMEU2WAVY6OTFNQ", is_verified=True
+    )
+    test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
+    main_secret, main_public = generate_api_key(account.address, Network.MAINNET)
+    APIKey.objects.create(
+        secret_key=test_secret,
+        public_key=test_public,
+        account=account,
+        network=Network.TESTNET,
+    )
+    APIKey.objects.create(
+        secret_key=main_secret,
+        public_key=main_public,
+        account=account,
+        network=Network.MAINNET,
     )
     auth_token = RefreshToken.for_user(account)
     return (account, auth_token)
@@ -52,8 +82,8 @@ def api_key_account() -> Any:
         address="C7RYOGEWDT7HZM3HKPSMU7QGWTRWR3EPOQTJ2OHXGYLARD3X62DNWELS34",
         is_verified=True,
     )
-    test_secret, test_public = generate_api_key(account.address, "testnet")
-    main_secret, main_public = generate_api_key(account.address, "mainnet")
+    test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
+    main_secret, main_public = generate_api_key(account.address, Network.MAINNET)
     test_api_key = APIKey.objects.create(
         secret_key=test_secret,
         public_key=test_public,

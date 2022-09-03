@@ -65,7 +65,7 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     assert len(response.data["data"]["results"]) == 1
 
     # Retreive Payment Link
-    response = api_client.get(f"/api/payment-links/{payment_link.uid}")
+    response = api_client.get(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
     assert response.data["message"] is None
@@ -76,13 +76,13 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     assert "No PaymentLink matches the given query." in response.data["message"]
 
     # Active | Inactive Update Test
-    response = api_client.patch(f"/api/payment-links/{payment_link.uid}")
+    response = api_client.patch(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["is_active"] is False
     assert "Payment Link Updated" in response.data["message"]
 
     # Fetch Transactions Endpoint
-    response = api_client.get("/api/transactions", {"payment_link": payment_link.uid})
+    response = api_client.get("/api/transactions", {"payment_link": payment_link.slug})
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 0
     assert "Transactions returned successfully" in response.data["message"]
@@ -118,7 +118,7 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
     assert len(response.data["data"]["results"]) == 1
 
     # Retreive Payment Link
-    response = api_client.get(f"/api/payment-links/{payment_link.uid}")
+    response = api_client.get(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
     assert response.data["message"] is None
@@ -129,13 +129,13 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
     assert "No PaymentLink matches the given query." in response.data["message"]
 
     # Active | Inactive Update Test
-    response = api_client.patch(f"/api/payment-links/{payment_link.uid}")
+    response = api_client.patch(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["is_active"] is False
     assert "Payment Link Updated" in response.data["message"]
 
     # Fetch Transactions Endpoint
-    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
+    response = api_client.get(f"/api/transactions?payment_link={payment_link.slug}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 0
     assert "Transactions returned successfully" in response.data["message"]
@@ -339,7 +339,7 @@ def test_initialize_transaction(
     assert "Transactions returned successfully" in response.data["message"]
 
     # Fetch payment link transactions Endpoint
-    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
+    response = api_client.get(f"/api/transactions?payment_link={payment_link.slug}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
     assert "Transactions returned successfully" in response.data["message"]
