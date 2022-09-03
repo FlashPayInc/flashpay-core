@@ -2,8 +2,8 @@ from unittest import mock
 
 import pytest
 from algosdk.error import AlgodHTTPError, IndexerHTTPError
-from django.conf import LazySettings
 
+from django.conf import LazySettings
 from django.db import DatabaseError
 
 from rest_framework.test import APIClient
@@ -121,3 +121,19 @@ def test_update_assets_view(api_client: APIClient, settings: LazySettings) -> No
     response = api_client.post("/api/core/assets", data=data, format="json")
     assert response.status_code == 201
     assert response.data["message"] == "Assets updated successfully"
+
+    # adding the same asset but with a different network fails.
+    data = [
+        {
+            "asa_id": 0,
+            "short_name": "ALGO",
+            "long_name": "ALGORAND",
+            "image_url": "https://flashpay.com/img.png",
+            "decimals": 6,
+            "network": "testnet",
+        },
+    ]
+    response = api_client.post("/api/core/assets", data=data, format="json")
+    assert response.status_code == 400
+    assert response.data["message"] == "Validation Error"
+    assert "asset with this asa id already exists." in str(response.data["data"])

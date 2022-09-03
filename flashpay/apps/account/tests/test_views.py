@@ -14,7 +14,7 @@ from flashpay.apps.account.models import Account
 
 @pytest.mark.django_db
 def test_account_auth_view(api_client: APIClient) -> None:
-    fernet = Fernet(settings.ENCRYPTION_KEY)
+    fernet = Fernet(settings.ENCRYPTION_KEY.encode())
     # This is a valid testnet transaction.
     tx_hash = "JOD624NMQOLGSWY5B4OV377AHRESCRONHZ4G3L3EAI5PKGOOKDPQ"
     address = "4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM"
@@ -53,7 +53,7 @@ def test_account_auth_view(api_client: APIClient) -> None:
 
 @pytest.mark.django_db
 def test_account_setup_view_errors(api_client: APIClient) -> None:
-    fernet = Fernet(settings.ENCRYPTION_KEY)
+    fernet = Fernet(settings.ENCRYPTION_KEY.encode())
     valid_tx_hash = "JOD624NMQOLGSWY5B4OV377AHRESCRONHZ4G3L3EAI5PKGOOKDPQ"
     valid_address = "4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM"
     unverified_address = generate_account()[1]

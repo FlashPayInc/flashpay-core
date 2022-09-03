@@ -22,7 +22,13 @@ class TransactionType(models.TextChoices):
 
 
 class PaymentLink(BaseModel):
-    asset = models.ForeignKey("core.Asset", on_delete=models.PROTECT, null=False, blank=False)
+    asset = models.ForeignKey(
+        "core.Asset",
+        to_field="asa_id",
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False,
+    )
     account = models.ForeignKey(
         to="account.Account",
         on_delete=models.DO_NOTHING,
@@ -66,7 +72,12 @@ class PaymentLink(BaseModel):
 class Transaction(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, primary_key=True, null=False, blank=False)
     txn_reference = models.CharField(max_length=42, unique=True, null=False, blank=False)
-    asset = models.ForeignKey("core.Asset", on_delete=models.PROTECT, null=False)
+    asset = models.ForeignKey(
+        "core.Asset",
+        to_field="asa_id",
+        on_delete=models.PROTECT,
+        null=False,
+    )
     sender = models.CharField(max_length=ADDRESS_LEN, null=False, blank=False)
     txn_type = models.CharField(
         max_length=50,
