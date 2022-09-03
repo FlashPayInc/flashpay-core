@@ -89,7 +89,7 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
     def get_object(self) -> Any:
         queryset = self.filter_queryset(self.get_queryset())
         filter_kwargs = {
-            "uid": self.kwargs["uid"],
+            "slug": self.kwargs["slug"],
             "account": self.request.user,
             "network": self.request.network,
         }
@@ -153,13 +153,13 @@ class TransactionsView(ListCreateAPIView):
         return [PublicKeyAuthentication(), SecretKeyAuthentication()]
 
     def get_queryset(self) -> QuerySet:
-        payment_link_uid = self.request.query_params.get("payment_link", None)
+        payment_link_slug = self.request.query_params.get("payment_link", None)
         qs = Transaction.objects.filter(
             recipient=self.request.user.address,  # type: ignore[union-attr]
             network=self.request.network,
         )
-        if payment_link_uid:
-            payment_link = get_object_or_404(PaymentLink, uid=payment_link_uid)
+        if payment_link_slug:
+            payment_link = get_object_or_404(PaymentLink, slug=payment_link_slug)
             qs = qs.filter(txn_reference__icontains=payment_link.uid.hex)
         return qs
 
