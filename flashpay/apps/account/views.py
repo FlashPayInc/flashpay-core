@@ -10,12 +10,14 @@ from django.db.models import QuerySet
 
 from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListCreateAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from flashpay.apps.account.authentication import CustomJWTAuthentication
 from flashpay.apps.account.models import Account, APIKey
 from flashpay.apps.account.serializers import (
+    AccountNetworkUpdateSerializer,
     AccountSetUpSerializer,
     AccountWalletAuthenticationSerializer,
     APIKeySerializer,
@@ -70,9 +72,15 @@ class AccountWalletAuthenticationView(GenericAPIView):
 
 class AccountSetUpView(GenericAPIView):
     queryset = Account.objects.get_queryset()
-    indexer_client = settings.INDEXER_CLIENT
     serializer_class: Optional[Type["BaseSerializer"]] = AccountSetUpSerializer
     permission_classes: Sequence["_PermissionClass"] = [AllowAny]
+
+    def get_indexer_client(self, network: Network) -> Any:
+        return (
+            settings.TESTNET_INDEXER_CLIENT
+            if network == Network.TESTNET
+            else settings.MAINNET_INDEXER_CLIENT
+        )
 
     def post(self, request: Request) -> Response:
         serializer = self.get_serializer(data=request.data)
@@ -100,8 +108,9 @@ class AccountSetUpView(GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        indexer_client = self.get_indexer_client(account.network)
         try:
-            api_response = self.indexer_client.transaction(
+            api_response = indexer_client.transaction(
                 txid=serializer.validated_data["txid"],
             )
         except IndexerHTTPError as e:
@@ -197,8 +206,11 @@ class AccountSetUpView(GenericAPIView):
 
 
 class APIKeyView(ListCreateAPIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self) -> QuerySet:
-        return APIKey.objects.filter(account=self.request.user)  # type: ignore[misc]
+        return APIKey.objects.filter(account=self.request.user, network=self.request.network)  # type: ignore[misc] # noqa: E501
 
     def get_serializer_class(self) -> Type["BaseSerializer"]:
         if self.request.method == "POST":
@@ -225,4 +237,36 @@ class APIKeyView(ListCreateAPIView):
                 "data": response.data,
             },
             status.HTTP_201_CREATED,
+        )
+
+
+class AccountNetworkView(GenericAPIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = AccountNetworkUpdateSerializer
+
+    def post(self, request: Request) -> Response:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        self.request.user.network = Network(serializer.validated_data["network"])  # type: ignore[union-attr] # noqa: E501
+        self.request.user.save()
+
+        return Response(
+            data={
+                "status": status.HTTP_200_OK,
+                "message": "Network updated successfully!",
+                "data": {"network": self.request.user.network},  # type: ignore[union-attr] # noqa: E501
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def get(self, request: Request) -> Response:
+        return Response(
+            data={
+                "status": status.HTTP_200_OK,
+                "message": "Network status returned successfully!",
+                "data": {"network": self.request.user.network},  # type: ignore[union-attr] # noqa: E501
+            },
+            status=status.HTTP_200_OK,
         )

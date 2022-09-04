@@ -1,9 +1,5 @@
-from rest_framework.pagination import CursorPagination
+from rest_framework.pagination import PageNumberPagination
 
 
-class CustomCursorPagination(CursorPagination):
-    ordering = "-created_at"
-
-
-class TimeStampOrderedCustomCursorPagination(CursorPagination):
+class CustomPageNumberPagination(PageNumberPagination):
     ordering = "-created_at"

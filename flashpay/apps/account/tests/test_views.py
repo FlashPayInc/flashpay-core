@@ -10,6 +10,7 @@ from django.conf import settings
 from rest_framework.test import APIClient
 
 from flashpay.apps.account.models import Account
+from flashpay.apps.core.models import Network
 
 
 @pytest.mark.django_db
@@ -112,13 +113,18 @@ def test_account_setup_view_errors(api_client: APIClient) -> None:
 def test_api_key_views(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
     auth_token = test_account[1]
     api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+
     # Test Net APIKey
-    response = api_client.post("/api/accounts/api-keys", data={"network": "testnet"})
+    # First, update the network to testnet
+    api_client.post("/api/accounts/network", data={"network": "testnet"})
+    response = api_client.post("/api/accounts/api-keys")
     assert response.status_code == 201
     assert response.data["data"]["network"] == "testnet"
     assert "sk_test" in response.data["data"]["secret_key"]
     assert "pk_test" in response.data["data"]["public_key"]
+
     # Main Net APIKey
+    api_client.post("/api/accounts/network", data={"network": "mainnet"})
     response1 = api_client.post("/api/accounts/api-keys")
     assert response1.status_code == 201
     assert response1.data["data"]["network"] == "mainnet"
@@ -127,4 +133,20 @@ def test_api_key_views(api_client: APIClient, test_account: Tuple[Account, Any])
     # Fetch APIKey
     response2 = api_client.get("/api/accounts/api-keys")
     assert response2.status_code == 200
-    assert len(response2.data["data"]["results"]) == 2
+    assert len(response2.data["data"]["results"]) == 1
+
+
+@pytest.mark.django_db
+def test_update_account_network(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
+    auth_token = test_account[1]
+    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+
+    # update account's network to testnet
+    response = api_client.post("/api/accounts/network", data={"network": "testnet"})
+    assert response.status_code == 200
+    assert response.data["data"]["network"] == Network.TESTNET
+
+    # update account's network to mainnet
+    response = api_client.post("/api/accounts/network", data={"network": "mainnet"})
+    assert response.status_code == 200
+    assert response.data["data"]["network"] == Network.MAINNET

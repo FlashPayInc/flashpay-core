@@ -41,27 +41,67 @@ class HealthCheckView(GenericAPIView):
 
 class HealthCheckThirdPartyView(GenericAPIView):
     def get(self, request: Request) -> Response:
-        algod_client = settings.ALGOD_CLIENT
-        indexer_client = settings.INDEXER_CLIENT
+        response = {}
+        testnet_algod_client = settings.TESTNET_ALGOD_CLIENT
+        testnet_indexer_client = settings.TESTNET_INDEXER_CLIENT
+
+        mainnet_algod_client = settings.MAINNET_ALGOD_CLIENT
+        mainnet_indexer_client = settings.MAINNET_INDEXER_CLIENT
         try:
-            algod_client.health()
+            testnet_algod_client.health()
+            response["testnet_node"] = "up"
         except (AlgodHTTPError, AlgodResponseError):
             logger.critical(
                 "Unable to reach Algoexplorer Node Server due to:",
                 exc_info=True,
             )
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            response["testnet_node"] = "down"
         try:
-            indexer_client.health()
+            testnet_indexer_client.health()
+            response["testnet_indexer"] = "up"
         except IndexerHTTPError:
             logger.critical(
                 "Unable to reach Algoexplorer Indexer Server due to:",
                 exc_info=True,
             )
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response["testnet_indexer"] = "down"
 
-        return Response(status=status.HTTP_200_OK)
+        try:
+            mainnet_algod_client.health()
+            response["mainnet_node"] = "up"
+        except (AlgodHTTPError, AlgodResponseError):
+            logger.critical(
+                "Unable to reach Algoexplorer Node Server due to:",
+                exc_info=True,
+            )
+            response["mainnet_node"] = "down"
+        try:
+            mainnet_indexer_client.health()
+            response["mainnet_indexer"] = "up"
+        except IndexerHTTPError:
+            logger.critical(
+                "Unable to reach Algoexplorer Indexer Server due to:",
+                exc_info=True,
+            )
+            response["mainnet_indexer"] = "down"
+
+        if "down" in response.values():
+            return Response(
+                data={
+                    "status_code": status.HTTP_503_SERVICE_UNAVAILABLE,
+                    "message": "One or more services are down!",
+                    "data": response,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(
+            data={
+                "status_code": status.HTTP_200_OK,
+                "message": "All services are operational!",
+                "data": response,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class AssetView(ListCreateAPIView):

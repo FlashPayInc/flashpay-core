@@ -68,6 +68,9 @@ class PaymentLink(BaseModel):
     def transactions(self) -> QuerySet:
         return Transaction.objects.filter(txn_reference__icontains=self.uid.hex)
 
+    class Meta:
+        ordering = ["-created_at"]
+
 
 class Transaction(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, primary_key=True, null=False, blank=False)
@@ -92,9 +95,12 @@ class Transaction(models.Model):
     status = models.CharField(
         max_length=50, choices=TransactionStatus.choices, default=TransactionStatus.PENDING
     )
-    network = models.CharField(max_length=20, choices=Network.choices, default=Network.MAINNET)
+    network = models.CharField(max_length=20, choices=Network.choices, default=Network.TESTNET)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         return f"Transaction {self.txn_reference}"
+
+    class Meta:
+        ordering = ["-created_at"]

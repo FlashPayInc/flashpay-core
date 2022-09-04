@@ -16,16 +16,16 @@ from flashpay.apps.payments.models import PaymentLink, Transaction
 def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
     """Tests PaymentLink CRUD Endpoints without Authentication."""
     # Create Payment Link
-    response1 = api_client.post("/api/payment-links/")
+    response1 = api_client.post("/api/payment-links")
     assert response1.status_code == 401
 
     # Fetch Payment Links
-    response2 = api_client.get("/api/payment-links/")
+    response2 = api_client.get("/api/payment-links")
     assert response2.status_code == 401
 
-    # Retreive Payment Link
+    # Retreive Payment Link returns 404 as it can be access when there's no auth.
     response3 = api_client.get("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
-    assert response3.status_code == 401
+    assert response3.status_code == 404
 
     # Active | Inactive Update Test
     response5 = api_client.patch("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
@@ -43,15 +43,14 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     """
     Tests Payment Link CRUD Endpoints with secret key authentication.
     """
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     asset = Asset.objects.create(
         asa_id=1, short_name="ALGO", long_name="Algorand", image_url="https://hi.com/algo"
     )
     data = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 40}
-    response = api_client.post("/api/payment-links/", data=data)
+    response = api_client.post("/api/payment-links", data=data)
     assert response.status_code == 201
     assert "Payment Link Created Successfully" in response.data["message"]
 
@@ -60,7 +59,7 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     assert payment_link is not None
 
     # retrieve all links
-    response = api_client.get("/api/payment-links/")
+    response = api_client.get("/api/payment-links")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
 
@@ -68,7 +67,7 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     response = api_client.get(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
-    assert response.data["message"] is None
+    assert response.data["message"] == "Payment Link returned successfully"
 
     # Retrieve Payment Link 404
     response = api_client.get("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
@@ -82,7 +81,7 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     assert "Payment Link Updated" in response.data["message"]
 
     # Fetch Transactions Endpoint
-    response = api_client.get("/api/transactions", {"payment_link": payment_link.slug})
+    response = api_client.get("/api/transactions", {"payment_link": payment_link.uid})
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 0
     assert "Transactions returned successfully" in response.data["message"]
@@ -104,16 +103,16 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
         decimals=6,
     )
     data = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 40}
-    response = api_client.post("/api/payment-links/", data=data)
+    response = api_client.post("/api/payment-links", data=data)
     assert response.status_code == 201
-    assert "Payment Link Created Successfully" in response.data["message"]
+    assert "Payment Link Created Successfully" == response.data["message"]
 
     # check that the created link is present in db
     payment_link = PaymentLink.objects.first()
     assert payment_link is not None
 
     # retrieve all links
-    response = api_client.get("/api/payment-links/")
+    response = api_client.get("/api/payment-links")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
 
@@ -121,7 +120,7 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
     response = api_client.get(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
-    assert response.data["message"] is None
+    assert response.data["message"] == "Payment Link returned successfully"
 
     # Retrieve Payment Link 404
     response = api_client.get("/api/payment-links/4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
@@ -135,7 +134,7 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
     assert "Payment Link Updated" in response.data["message"]
 
     # Fetch Transactions Endpoint
-    response = api_client.get(f"/api/transactions?payment_link={payment_link.slug}")
+    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 0
     assert "Transactions returned successfully" in response.data["message"]
@@ -157,13 +156,13 @@ def test_create_payment_link_no_amount_and_zero_amount(
         decimals=6,
     )
     data = {"name": "Test", "description": "test", "asset": asset.asa_id}
-    response = api_client.post("/api/payment-links/", data=data)
+    response = api_client.post("/api/payment-links", data=data)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
     assert response.data["data"]["amount"][0] == "This field is required."
 
     data2 = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 0}
-    response = api_client.post("/api/payment-links/", data=data2)
+    response = api_client.post("/api/payment-links", data=data2)
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"
     assert response.data["data"]["amount"][0] == "Amount cannot be less than or equal to zero."
@@ -173,9 +172,8 @@ def test_create_payment_link_no_amount_and_zero_amount(
 def test_initialize_transaction_invalid_address(
     api_client: APIClient, api_key_account: Any, test_account: Tuple[Account, Any]
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     asset = Asset.objects.create(
         asa_id=0,
@@ -208,9 +206,8 @@ def test_initialize_transaction_wrong_amount(
     api_key_account: Any,
     test_account: Tuple[Account, Any],
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     asset = Asset.objects.create(
         asa_id=0,
@@ -246,9 +243,8 @@ def test_initialize_transaction_recipient_not_opted_in(
     test_account: Tuple[Account, Any],
     api_key_account: Any,
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     # Create Asset
     asset = Asset.objects.create(
@@ -284,9 +280,8 @@ def test_initialize_transaction(
     api_client: APIClient,
     api_key_account: Any,
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     asset = Asset.objects.create(
         asa_id=0,
@@ -339,7 +334,7 @@ def test_initialize_transaction(
     assert "Transactions returned successfully" in response.data["message"]
 
     # Fetch payment link transactions Endpoint
-    response = api_client.get(f"/api/transactions?payment_link={payment_link.slug}")
+    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
     assert "Transactions returned successfully" in response.data["message"]
@@ -351,9 +346,8 @@ def test_verify_transaction_usdc(
     test_opted_in_account: Tuple[Account, Any],
     api_key_account: Any,
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     # Create Asset
     asset = Asset.objects.create(
@@ -399,9 +393,8 @@ def test_verify_transaction_usdt(
     test_opted_in_account: Tuple[Account, Any],
     api_key_account: Any,
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     # Create Asset
     asset = Asset.objects.create(
@@ -447,9 +440,8 @@ def test_verify_transaction_algo(
     test_account: Tuple[Account, Any],
     api_key_account: Any,
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     # Create Asset
     asset = Asset.objects.create(
@@ -494,9 +486,8 @@ def test_verify_transaction_algo(
 def test_verify_transaction_with_wrong_txn_hash_and_txn_note(
     api_client: APIClient, test_opted_in_account: Tuple[Account, Any], api_key_account: Any
 ) -> None:
-    mainnet_api_key = api_key_account[1]
-    credentials = {"HTTP-X-SECRET-KEY": mainnet_api_key.secret_key}
-    api_client.credentials(**credentials)
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     # Create Asset
     asset = Asset.objects.create(

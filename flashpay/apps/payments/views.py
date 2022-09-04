@@ -1,5 +1,6 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Type
+from uuid import UUID
 
 from algosdk.error import IndexerHTTPError
 
@@ -8,19 +9,22 @@ from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
-from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import GenericAPIView, ListCreateAPIView, RetrieveUpdateAPIView
 from rest_framework.parsers import BaseParser, FormParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from flashpay.apps.account.authentication import (
+    AnonymousUser,
     CustomJWTAuthentication,
     PublicKeyAuthentication,
     SecretKeyAuthentication,
 )
-from flashpay.apps.core.paginators import TimeStampOrderedCustomCursorPagination
+from flashpay.apps.account.models import APIKey
+from flashpay.apps.core.models import Network
+from flashpay.apps.core.utils import encrypt_fernet_message
 from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import (
     CreatePaymentLinkSerializer,
@@ -82,28 +86,31 @@ class PaymentLinkView(ListCreateAPIView):
 
 class PaymentLinkDetailView(RetrieveUpdateAPIView):
     queryset = PaymentLink.objects.get_queryset()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnly]
     authentication_classes = [CustomJWTAuthentication, SecretKeyAuthentication]
     serializer_class = PaymentLinkSerializer
 
     def get_object(self) -> Any:
         queryset = self.filter_queryset(self.get_queryset())
-        filter_kwargs = {
-            "slug": self.kwargs["slug"],
-            "account": self.request.user,
-            "network": self.request.network,
-        }
+        if isinstance(self.request.user, AnonymousUser):
+            filter_kwargs = {"slug": self.kwargs["slug"]}
+        else:
+            filter_kwargs = {
+                "slug": self.kwargs["slug"],
+                "account": self.request.user,
+                "network": self.request.network,
+            }
         return get_object_or_404(queryset, **filter_kwargs)
 
     def retrieve(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         payment_link = self.get_object()
         updated_data = self.get_serializer(payment_link).data
-        updated_data["public_key"] = self.get_public_api_key()
+        updated_data["public_key"] = self.get_public_api_key(payment_link)
 
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
-                "message": None,
+                "message": "Payment Link returned successfully",
                 "data": updated_data,
             }
         )
@@ -111,12 +118,24 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
     def put(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         raise MethodNotAllowed("PUT")
 
-    def get_public_api_key(self) -> str:
-        return self.request.user.api_keys.filter(network=self.request.network).first().public_key  # type: ignore  # noqa: E501
+    def get_public_api_key(self, payment_link: PaymentLink) -> str:
+        if isinstance(self.request.user, AnonymousUser):
+            # there's always an api key for every account as it's auto generated on wallet setup
+            pub_key = (
+                APIKey.objects.filter(account=payment_link.account, network=payment_link.network)
+                .first()
+                .public_key  # type: ignore[union-attr]
+            )
+        else:
+            # the conditional above already makes sure it's not `AnonymousUser`
+            pub_key = (
+                self.request.user.api_keys.filter(network=self.request.network).first().public_key  # type: ignore[union-attr] # noqa: E501
+            )
+        return encrypt_fernet_message(str(pub_key)).decode()
 
     def patch(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         payment_link = self.get_object()
-        if payment_link.is_one_time and payment_link.total_revenue == payment_link.amount:
+        if payment_link.is_one_time:
             return Response(
                 {
                     "status_code": status.HTTP_400_BAD_REQUEST,
@@ -129,7 +148,7 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
         payment_link.save()
 
         updated_data = self.get_serializer(payment_link).data
-        updated_data["public_key"] = self.get_public_api_key()
+        updated_data["public_key"] = self.get_public_api_key(payment_link)
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
@@ -141,7 +160,6 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
 
 
 class TransactionsView(ListCreateAPIView):
-    pagination_class = TimeStampOrderedCustomCursorPagination
     authentication_classes = [
         PublicKeyAuthentication,
         SecretKeyAuthentication,
@@ -161,13 +179,18 @@ class TransactionsView(ListCreateAPIView):
         return [PublicKeyAuthentication(), SecretKeyAuthentication()]
 
     def get_queryset(self) -> QuerySet:
-        payment_link_slug = self.request.query_params.get("payment_link", None)
+        payment_link_uid = self.request.query_params.get("payment_link", None)
         qs = Transaction.objects.filter(
             recipient=self.request.user.address,  # type: ignore[union-attr]
             network=self.request.network,
         )
-        if payment_link_slug:
-            payment_link = get_object_or_404(PaymentLink, slug=payment_link_slug)
+        if payment_link_uid:
+            # validate the uuid
+            try:
+                UUID(payment_link_uid, version=4)
+            except ValueError:
+                raise ValidationError({"payment_link_uid": "Payment link is not valid!"})
+            payment_link = get_object_or_404(PaymentLink, uid=payment_link_uid)
             qs = qs.filter(txn_reference__icontains=payment_link.uid.hex)
         return qs
 
@@ -197,9 +220,16 @@ class TransactionsView(ListCreateAPIView):
 class VerifyTransactionView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VerifyTransactionSerializer
-    indexer_client = settings.INDEXER_CLIENT
     transaction_serializer = TransactionDetailSerializer
     authentication_classes = [PublicKeyAuthentication, SecretKeyAuthentication]
+
+    @property
+    def indexer_client(self):  # type: ignore
+        return (
+            settings.TESTNET_INDEXER_CLIENT
+            if self.request.network == Network.TESTNET
+            else settings.MAINNET_INDEXER_CLIENT
+        )
 
     def post(self, request: Request, **kwargs: Dict[str, Any]) -> Response:
         serializer = self.get_serializer(data={"txn_reference": kwargs["txn_reference"]})
@@ -216,6 +246,17 @@ class VerifyTransactionView(GenericAPIView):
                     "data": None,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if transaction has already been verified
+        if transaction.status != TransactionStatus.PENDING:
+            return Response(
+                data={
+                    "status_code": status.HTTP_409_CONFLICT,
+                    "message": "Transaction has already been verified",
+                    "data": self.transaction_serializer(transaction).data,
+                },
+                status=status.HTTP_409_CONFLICT,
             )
 
         try:
@@ -239,34 +280,35 @@ class VerifyTransactionView(GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check if transaction has already been verified
-        if transaction.status != TransactionStatus.PENDING:
-            return Response(
-                data={
-                    "status_code": status.HTTP_409_CONFLICT,
-                    "message": "Transaction has already been verified",
-                    "data": self.transaction_serializer(transaction).data,
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
         # verify tx & update status and tx_hash accordingly
-        if verify_transaction(db_txn=transaction, onchain_txn=api_response["transactions"][0]):
-            transaction.status = TransactionStatus.SUCCESS
-            transaction.txn_hash = txn_reference
-            transaction.save(update_fields=["status", "txn_hash"])
-            return Response(
-                data={
-                    "status_code": status.HTTP_200_OK,
-                    "message": "Transaction verified successfully",
-                    "data": self.transaction_serializer(transaction).data,
-                },
-                status=status.HTTP_200_OK,
-            )
-        else:
+        # __import__('pdb').set_trace()
+        try:
+            if verify_transaction(db_txn=transaction, onchain_txn=api_response["transactions"][0]):
+                transaction.status = TransactionStatus.SUCCESS
+                transaction.txn_hash = api_response["transactions"][0]["id"]
+                transaction.save(update_fields=["status", "txn_hash"])
+                return Response(
+                    data={
+                        "status_code": status.HTTP_200_OK,
+                        "message": "Transaction verified successfully",
+                        "data": self.transaction_serializer(transaction).data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                transaction.status = TransactionStatus.FAILED
+                transaction.save(update_fields=["status"])
+                return Response(
+                    data={
+                        "status_code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Transaction verification failed",
+                        "data": self.transaction_serializer(transaction).data,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except IndexError:
             transaction.status = TransactionStatus.FAILED
-            transaction.txn_hash = txn_reference
-            transaction.save(update_fields=["status", "txn_hash"])
+            transaction.save(update_fields=["status"])
             return Response(
                 data={
                     "status_code": status.HTTP_400_BAD_REQUEST,

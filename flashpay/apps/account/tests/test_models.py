@@ -16,7 +16,7 @@ def test_models() -> None:
     assert str(account) == f"Account {account.address}"
     assert setting.account == account
     assert setting.email == setting_data["email"]
-    assert str(setting) == f"Settings For Account {account.address}"
+    assert str(setting) == f"<Settings For Account: {account.address}>"
     assert api_key.secret_key == api_key_dat["secret_key"]
     assert api_key.public_key == api_key_dat["public_key"]
     assert api_key.account == account

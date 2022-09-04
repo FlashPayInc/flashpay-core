@@ -10,7 +10,7 @@ class Network(models.TextChoices):
 
 class BaseModel(models.Model):
     uid = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    network = models.CharField(max_length=20, choices=Network.choices, default=Network.MAINNET)
+    network = models.CharField(max_length=20, choices=Network.choices, default=Network.TESTNET)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True)

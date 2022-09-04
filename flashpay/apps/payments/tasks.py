@@ -4,6 +4,7 @@ from huey.contrib.djhuey import db_periodic_task, lock_task
 
 from django.conf import settings
 
+from flashpay.apps.core.models import Network
 from flashpay.apps.payments.models import Transaction, TransactionStatus
 from flashpay.apps.payments.utils import verify_transaction
 
@@ -11,10 +12,14 @@ from flashpay.apps.payments.utils import verify_transaction
 @db_periodic_task(crontab(minute="*/1"))
 @lock_task("lock-verify-txn")
 def verify_transactions() -> None:
-    indexer = settings.INDEXER_CLIENT
     db_txns = Transaction.objects.filter(status=TransactionStatus.PENDING)
     for db_txn in db_txns:
         try:
+            indexer = (
+                settings.TESTNET_INDEXER_CLIENT
+                if db_txn.network == Network.TESTNET
+                else settings.MAINNET_INDEXER_CLIENT
+            )
             results = indexer.search_transactions(
                 note_prefix=db_txn.txn_reference.encode(),
                 address=db_txn.sender,

@@ -17,7 +17,7 @@ class Account(BaseModel):
         return self.is_verified
 
 
-class Setting(BaseModel):
+class Setting(models.Model):
     account = models.OneToOneField(
         Account,
         related_name="settings",
@@ -25,9 +25,11 @@ class Setting(BaseModel):
         null=False,
     )
     email = models.EmailField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f"Settings For Account {self.account.address}"
+        return f"<Settings For Account: {self.account.address}>"
 
 
 class APIKey(BaseModel):
@@ -37,3 +39,6 @@ class APIKey(BaseModel):
     )
     secret_key = models.CharField(null=False, blank=False, max_length=100)
     public_key = models.CharField(null=False, blank=False, max_length=100)
+
+    class Meta:
+        ordering = ["-created_at"]

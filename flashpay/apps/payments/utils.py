@@ -17,9 +17,13 @@ def generate_txn_reference(uid: Optional[UUID] = None) -> str:
     return f"fp_{uid.hex}_{secrets.token_hex(3)}"
 
 
-def check_if_address_opted_in_asa(address: str, asset_id: int) -> bool:
+def check_if_address_opted_in_asa(address: str, asset_id: int, network: Network) -> bool:
     """Checks if the provided address is opted into a given ASA."""
-    algod_client = settings.ALGOD_CLIENT
+    algod_client = (
+        settings.TESTNET_ALGOD_CLIENT
+        if network == Network.TESTNET
+        else settings.MAINNET_ALGOD_CLIENT
+    )
     # asset_id = 0  || 1 is used for Algorand native token.
     if asset_id == 0 or asset_id == 1:
         return True
@@ -41,7 +45,7 @@ def verify_transaction(db_txn: Transaction, onchain_txn: dict) -> bool:
     elif onchain_txn["tx-type"] == "pay":
         recipient = onchain_txn["payment-transaction"]["receiver"]
         amount = onchain_txn["payment-transaction"]["amount"]
-        asset_id = 0 if db_txn.network == Network.MAINNET else 1
+        asset_id = 1 if db_txn.network == Network.MAINNET else 0
     else:
         return False
 

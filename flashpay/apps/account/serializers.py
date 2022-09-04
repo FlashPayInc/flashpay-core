@@ -23,7 +23,7 @@ class CreateAPIKeySerializer(APIKeySerializer):
         read_only_fields = ("secret_key", "public_key")
 
     def validate(self, attrs: Any) -> Any:
-        network = attrs.get("network", Network.MAINNET)
+        network = self.context["request"].network
         account = self.context["request"].user
         # If API Key exists, the system deletes the keys
         try:
@@ -34,6 +34,7 @@ class CreateAPIKeySerializer(APIKeySerializer):
         attrs["account"] = account
         attrs["secret_key"] = secret_key
         attrs["public_key"] = public_key
+        attrs["network"] = network
         return super().validate(attrs)
 
 
@@ -44,12 +45,12 @@ class BaseAccountSerializer(serializers.Serializer):
 class AccountWalletAuthenticationSerializer(BaseAccountSerializer):
     def validate(self, attrs: Dict[str, Any]) -> Any:
         payload = attrs["payload"]
-        decrypted_payload = decrypt_fernet_message(payload)
         try:
+            decrypted_payload = decrypt_fernet_message(payload)
             # we don't need the nonce provided here.
             _, address = decrypted_payload.split(",")
         except (ValueError, InvalidToken, binascii.Error):
-            raise serializers.ValidationError("Invalid payload format provided.")
+            raise serializers.ValidationError({"payload": "Invalid payload format provided"})
 
         # now validate the address
         cleaned_address = address.strip()
@@ -62,11 +63,11 @@ class AccountWalletAuthenticationSerializer(BaseAccountSerializer):
 class AccountSetUpSerializer(BaseAccountSerializer):
     def validate(self, attrs: Dict[str, Any]) -> Any:
         payload = attrs["payload"]
-        decrypted_payload = decrypt_fernet_message(payload)
         try:
+            decrypted_payload = decrypt_fernet_message(payload)
             nonce, address, txid = decrypted_payload.split(",")
         except (ValueError, InvalidToken, binascii.Error):
-            raise serializers.ValidationError("Invalid payload format provided.")
+            raise serializers.ValidationError({"payload": "Invalid payload format provided"})
 
         # now validate the address
         cleaned_address = address.strip()
@@ -78,3 +79,7 @@ class AccountSetUpSerializer(BaseAccountSerializer):
             "nonce": nonce.strip(),
             "txid": txid.strip(),
         }
+
+
+class AccountNetworkUpdateSerializer(serializers.Serializer):
+    network = serializers.ChoiceField(required=True, choices=Network.choices)

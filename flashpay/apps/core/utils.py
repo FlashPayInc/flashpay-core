@@ -17,3 +17,9 @@ def decrypt_fernet_message(payload: str) -> str:
     decrypted_payload = fernet.decrypt(b64_decoded_payload).decode()
 
     return str(decrypted_payload)
+
+
+def encrypt_fernet_message(message: str) -> bytes:
+    """Encrypts a message using Fernet and returns the decoded format."""
+    fernet = Fernet(settings.ENCRYPTION_KEY)
+    return fernet.encrypt(message.encode())

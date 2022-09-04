@@ -1,3 +1,5 @@
+import binascii
+from base64 import b64decode
 from typing import Any, Dict, Optional, Tuple
 
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -5,6 +7,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.settings import api_settings
 
 from django.conf import settings
+from django.db.models import Q
 
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
@@ -21,11 +24,17 @@ class PublicKeyAuthentication(BaseAuthentication):
         return f'X-PUBLIC-KEY realm="{self.www_authenticate_realm}"'
 
     def authenticate(self, request: Request) -> Optional[Tuple[Account, Optional[str]]]:
-        public_key = request.META.get("HTTP-X-PUBLIC-KEY")
+        public_key = request.META.get("HTTP_X_PUBLIC_KEY")
         if not public_key:
             return None
         try:
-            api_key = APIKey.objects.select_related("account").get(public_key=public_key)
+            # in some cases like `payment link detail view`, the base64 encoded format of the
+            # public key can be used.
+            try:
+                public_key_query = Q(public_key=public_key) | Q(public_key=b64decode(public_key))
+            except binascii.Error:
+                public_key_query = Q(public_key=public_key)
+            api_key = APIKey.objects.select_related("account").get(public_key_query)
             account = api_key.account
             request.network = Network(api_key.network)  # type: ignore[attr-defined]
         except APIKey.DoesNotExist:
@@ -40,7 +49,7 @@ class SecretKeyAuthentication(BaseAuthentication):
         return f'X-SECRET-KEY realm="{self.www_authenticate_realm}"'
 
     def authenticate(self, request: Request) -> Optional[Tuple[Account, Optional[str]]]:
-        secret_key = request.META.get("HTTP-X-SECRET-KEY")
+        secret_key = request.META.get("HTTP_X_SECRET_KEY")
         if not secret_key:
             return None
         try:
