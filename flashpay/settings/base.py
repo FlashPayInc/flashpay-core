@@ -189,8 +189,8 @@ LOGGING = {
 REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
-    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
-    "PAGE_SIZE": 10,
+    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomPageNumberPagination",
+    "PAGE_SIZE": 5,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "flashpay.apps.account.authentication.CustomJWTAuthentication",
     ),
@@ -199,11 +199,15 @@ REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALGOD_ADDRESS = env("ALGOD_ADDRESS")
-ALGOD_CLIENT = AlgodClient("FP", ALGOD_ADDRESS, {"X-API-Key": "FP"})
+TESTNET_ALGOD_ADDRESS = env("TESTNET_ALGOD_ADDRESS")
+TESTNET_ALGOD_CLIENT = AlgodClient("FP", TESTNET_ALGOD_ADDRESS, {"X-API-Key": "FP"})
+TESTNET_INDEXER_ADDRESS = env("TESTNET_INDEXER_ADDRESS")
+TESTNET_INDEXER_CLIENT = IndexerClient("FP", TESTNET_INDEXER_ADDRESS, {"X-API-Key": "FP"})
 
-INDEXER_ADDRESS = env("INDEXER_ADDRESS")
-INDEXER_CLIENT = IndexerClient("FP", INDEXER_ADDRESS, {"X-API-Key": "FP"})
+MAINNET_ALGOD_ADDRESS = env("MAINNET_ALGOD_ADDRESS")
+MAINNET_ALGOD_CLIENT = AlgodClient("FP", MAINNET_ALGOD_ADDRESS, {"X-API-Key": "FP"})
+MAINNET_INDEXER_ADDRESS = env("MAINNET_INDEXER_ADDRESS")
+MAINNET_INDEXER_CLIENT = IndexerClient("FP", MAINNET_INDEXER_ADDRESS, {"X-API-Key": "FP"})
 
 ENCRYPTION_KEY = env("ENCRYPTION_KEY")
 

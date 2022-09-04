@@ -37,6 +37,13 @@ class CreatePaymentLinkSerializer(ModelSerializer):
             raise ValidationError(
                 detail={"amount": "Amount cannot be less than or equal to zero."}
             )
+
+        # check that the asset provided is for the network
+        if attrs["asset"].network != self.context["request"].network:
+            raise ValidationError(
+                detail={"asset": "This asset is not available for the specified network."}
+            )
+
         # Attach Account creating the payment link
         attrs["account"] = self.context["request"].user
         attrs["network"] = self.context["request"].network
@@ -92,7 +99,16 @@ class TransactionSerializer(ModelSerializer):
         return value
 
     def validate(self, attrs: Any) -> Any:
-        if not check_if_address_opted_in_asa(attrs["recipient"], attrs["asset"].asa_id):
+        network = self.context["request"].network
+        # check that the asset provided is for the network
+        if attrs["asset"].network != network:
+            raise ValidationError(
+                detail={"asset": "This asset is not available for the specified network."}
+            )
+
+        if not check_if_address_opted_in_asa(
+            address=attrs["recipient"], asset_id=attrs["asset"].asa_id, network=network
+        ):
             raise ValidationError({"recipient": "recipient is not opted in to the asset."})
 
         if attrs["txn_type"] == "payment_link":
@@ -145,6 +161,7 @@ class PaymentLinkSerializer(ModelSerializer):
     class Meta:
         model = PaymentLink
         fields = (
+            "uid",
             "asset",
             "name",
             "description",
@@ -155,6 +172,8 @@ class PaymentLinkSerializer(ModelSerializer):
             "has_fixed_amount",
             "is_one_time",
             "network",
+            "created_at",
+            "updated_at",
             "transactions",
         )
 

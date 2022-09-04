@@ -33,18 +33,18 @@ def test_thirdparty_healthcheck_view(api_client: APIClient) -> None:
     assert response.status_code == 200
 
     with mock.patch(
-        "flashpay.apps.core.views.settings.ALGOD_CLIENT.health",
+        "flashpay.apps.core.views.settings.TESTNET_ALGOD_CLIENT.health",
         side_effect=AlgodHTTPError("Kaboom!"),
     ):
         response = api_client.get("/api/core/health/thirdparty")
-        assert response.status_code == 500
+        assert response.status_code == 503
 
     with mock.patch(
-        "flashpay.apps.core.views.settings.INDEXER_CLIENT.health",
+        "flashpay.apps.core.views.settings.TESTNET_INDEXER_CLIENT.health",
         side_effect=IndexerHTTPError("Kaboom!"),
     ):
         response = api_client.get("/api/core/health/thirdparty")
-        assert response.status_code == 500
+        assert response.status_code == 503
 
 
 def test_404_page(api_client: APIClient) -> None:

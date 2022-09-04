@@ -21,18 +21,19 @@ def api_client() -> APIClient:
 
 @pytest.fixture
 def algod_client() -> Any:
-    return settings.ALGOD_CLIENT
+    return settings.TESTNET_ALGOD_CLIENT
 
 
 @pytest.fixture
 def indexer_client() -> Any:
-    return settings.INDEXER_CLIENT
+    return settings.TESTNET_INDEXER_CLIENT
 
 
 @pytest.fixture
 def test_account() -> Any:
     account = Account.objects.create(
         address="4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM",
+        network=Network.TESTNET,
         is_verified=True,
     )
     test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
