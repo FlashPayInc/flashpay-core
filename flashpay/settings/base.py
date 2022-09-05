@@ -246,3 +246,11 @@ DEFAULT_PAYMENT_LINK_IMAGE = (
     "https://asset.cloudinary.com/flashpay/f6e11bc25a974729eb5fe362024e2c0d"
 )
 ASSETS_UPLOAD_API_KEY = env("ASSETS_UPLOAD_API_KEY")
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": env("CLOUDINARY_APP_NAME"),
+    "API_KEY": env("CLOUDINARY_API_KEY"),
+    "API_SECRET": env("CLOUDINARY_API_SECRET"),
+}
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
