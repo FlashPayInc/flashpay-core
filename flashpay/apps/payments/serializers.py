@@ -51,7 +51,7 @@ class CreatePaymentLinkSerializer(ModelSerializer):
 
 
 class TransactionSerializer(ModelSerializer):
-    payment_link = UUIDField(write_only=True)
+    payment_link = UUIDField(write_only=True, required=False)
 
     class Meta:
         model = Transaction
