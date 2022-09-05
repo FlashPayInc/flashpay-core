@@ -106,7 +106,7 @@ class TransactionSerializer(ModelSerializer):
                 detail={"asset": "This asset is not available for the specified network."}
             )
 
-        if attrs['recipient'] != self.context['request'].account.address:
+        if attrs['recipient'] != self.context['request'].user.address:
             raise ValidationError({'recipient': 'Invalid recipient address'})
 
         if not check_if_address_opted_in_asa(
