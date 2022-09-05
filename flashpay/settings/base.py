@@ -52,8 +52,8 @@ SITE_ID = 1
 # ==============================================================================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -198,6 +198,19 @@ REST_FRAMEWORK: Dict[str, Union[str, Tuple[str], int]] = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-requested-with",
+    "x-public-key",
+    "x-secret-key",
+]
 
 TESTNET_ALGOD_ADDRESS = env("TESTNET_ALGOD_ADDRESS")
 TESTNET_ALGOD_CLIENT = AlgodClient("FP", TESTNET_ALGOD_ADDRESS, {"X-API-Key": "FP"})
