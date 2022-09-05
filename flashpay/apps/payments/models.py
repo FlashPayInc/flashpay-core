@@ -19,6 +19,7 @@ class TransactionStatus(models.TextChoices):
 
 class TransactionType(models.TextChoices):
     PAYMENT_LINK = "payment_link"
+    NORMAL = "normal"
 
 
 class PaymentLink(BaseModel):

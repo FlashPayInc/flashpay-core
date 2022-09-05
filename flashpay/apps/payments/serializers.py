@@ -51,7 +51,7 @@ class CreatePaymentLinkSerializer(ModelSerializer):
 
 
 class TransactionSerializer(ModelSerializer):
-    payment_link = UUIDField(write_only=True)
+    payment_link = UUIDField(write_only=True, required=False)
 
     class Meta:
         model = Transaction
@@ -105,6 +105,12 @@ class TransactionSerializer(ModelSerializer):
             raise ValidationError(
                 detail={"asset": "This asset is not available for the specified network."}
             )
+
+        if attrs["sender"] == attrs["recipient"]:
+            raise ValidationError({"sender": "Sender's address cannot be the same as recipient"})
+
+        if attrs["recipient"] != self.context["request"].user.address:
+            raise ValidationError({"recipient": "Invalid recipient address"})
 
         if not check_if_address_opted_in_asa(
             address=attrs["recipient"], asset_id=attrs["asset"].asa_id, network=network

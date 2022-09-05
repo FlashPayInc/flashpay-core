@@ -133,6 +133,7 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomPageNumberPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "flashpay.apps.account.authentication.CustomJWTAuthentication",
@@ -141,11 +142,4 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
 }
 
-CLOUDINARY_STORAGE = {
-    "CLOUD_NAME": env("CLOUDINARY_APP_NAME"),
-    "API_KEY": env("CLOUDINARY_API_KEY"),
-    "API_SECRET": env("CLOUDINARY_API_SECRET"),
-}
-
-DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 FLASHPAY_MASTER_WALLET = env("FLASHPAY_MASTER_WALLET")
