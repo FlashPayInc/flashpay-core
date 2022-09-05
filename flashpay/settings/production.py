@@ -133,7 +133,6 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
     "EXCEPTION_HANDLER": "flashpay.apps.core.exceptions.custom_exception_handler",
-    "DEFAULT_PAGINATION_CLASS": "flashpay.apps.core.paginators.CustomCursorPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "flashpay.apps.account.authentication.CustomJWTAuthentication",
