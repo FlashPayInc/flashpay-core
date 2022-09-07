@@ -78,6 +78,8 @@ jobs:
           MAINNET_ALGOD_ADDRESS: https://node.algoexplorerapi.io
           MAINNET_INDEXER_ADDRESS: https://algoindexer.algoexplorerapi.io
           CLOUDINARY_APP_NAME: "flashpay"
+          CLOUDINARY_API_KEY: "heurhfkwefvbwjkh"
+          CLOUDINARY_API_SECRET: "wehSSDGHGJsdfnbfkjldf"
         run: poetry run make lint
 
    test:
