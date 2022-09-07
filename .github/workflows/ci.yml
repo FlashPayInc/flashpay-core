@@ -11,6 +11,17 @@ on:
 env:
   ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
   ASSETS_UPLOAD_API_KEY: ${{ secrets.ASSETS_UPLOAD_API_KEY }}
+  REDIS_URL: 'redis://localhost:6379'
+  DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
+  SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
+  CONN_MAX_AGE: 60
+  TESTNET_ALGOD_ADDRESS: https://node.testnet.algoexplorerapi.io
+  TESTNET_INDEXER_ADDRESS: https://algoindexer.testnet.algoexplorerapi.io
+  MAINNET_ALGOD_ADDRESS: https://node.algoexplorerapi.io
+  MAINNET_INDEXER_ADDRESS: https://algoindexer.algoexplorerapi.io
+  CLOUDINARY_APP_NAME: "flashpay"
+  CLOUDINARY_API_KEY: "heurhfkwefvbwjkh"
+  CLOUDINARY_API_SECRET: "wehSSDGHGJsdfnbfkjldf"
 
 jobs:
    lint:
@@ -69,17 +80,6 @@ jobs:
       - name: Run Code Analysis
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
-          REDIS_URL: 'redis://localhost:6379'
-          DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
-          SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
-          CONN_MAX_AGE: 60
-          TESTNET_ALGOD_ADDRESS: https://node.testnet.algoexplorerapi.io
-          TESTNET_INDEXER_ADDRESS: https://algoindexer.testnet.algoexplorerapi.io
-          MAINNET_ALGOD_ADDRESS: https://node.algoexplorerapi.io
-          MAINNET_INDEXER_ADDRESS: https://algoindexer.algoexplorerapi.io
-          CLOUDINARY_APP_NAME: "flashpay"
-          CLOUDINARY_API_KEY: "heurhfkwefvbwjkh"
-          CLOUDINARY_API_SECRET: "wehSSDGHGJsdfnbfkjldf"
         run: poetry run make lint
 
    test:
@@ -163,14 +163,6 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
-          REDIS_URL: 'redis://localhost:6379'
-          DJANGO_SETTINGS_MODULE: 'flashpay.settings.test'
-          SECRET_KEY: 'abcd123$<12@kskdmdmsecretkeydsndm@'
-          CONN_MAX_AGE: 60
-          TESTNET_ALGOD_ADDRESS: https://node.testnet.algoexplorerapi.io
-          TESTNET_INDEXER_ADDRESS: https://algoindexer.testnet.algoexplorerapi.io
-          MAINNET_ALGOD_ADDRESS: https://node.algoexplorerapi.io
-          MAINNET_INDEXER_ADDRESS: https://algoindexer.algoexplorerapi.io
         run: |
           poetry run make test
           poetry run python manage.py migrate --no-input
