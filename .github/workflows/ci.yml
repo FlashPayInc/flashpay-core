@@ -77,6 +77,7 @@ jobs:
           TESTNET_INDEXER_ADDRESS: https://algoindexer.testnet.algoexplorerapi.io
           MAINNET_ALGOD_ADDRESS: https://node.algoexplorerapi.io
           MAINNET_INDEXER_ADDRESS: https://algoindexer.algoexplorerapi.io
+          CLOUDINARY_APP_NAME: "flashpay"
         run: poetry run make lint
 
    test:
