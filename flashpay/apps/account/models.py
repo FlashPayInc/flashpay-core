@@ -42,3 +42,14 @@ class APIKey(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class Webhook(BaseModel):
+    # There can only be testnet and mainnet webhook urls for an account (i.e. two)
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, null=False, related_name="webhook_urls"
+    )
+    url = models.URLField(null=False, blank=False, max_length=100)
+
+    class Meta:
+        ordering = ["-created_at"]

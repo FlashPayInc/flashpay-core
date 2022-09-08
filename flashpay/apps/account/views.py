@@ -15,13 +15,15 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from flashpay.apps.account.authentication import CustomJWTAuthentication
-from flashpay.apps.account.models import Account, APIKey
+from flashpay.apps.account.models import Account, APIKey, Webhook
 from flashpay.apps.account.serializers import (
     AccountNetworkUpdateSerializer,
     AccountSetUpSerializer,
     AccountWalletAuthenticationSerializer,
     APIKeySerializer,
     CreateAPIKeySerializer,
+    CreateWebhookSerializer,
+    WebhookSerializer,
 )
 from flashpay.apps.account.utils import generate_api_key
 from flashpay.apps.core.models import Network
@@ -269,4 +271,39 @@ class AccountNetworkView(GenericAPIView):
                 "data": {"network": self.request.user.network},  # type: ignore[union-attr] # noqa: E501
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class WebhookView(ListCreateAPIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self) -> QuerySet:
+        return Webhook.objects.filter(account=self.request.user, network=self.request.network)  # type: ignore[misc] # noqa: E501
+
+    def get_serializer_class(self) -> Type["BaseSerializer"]:
+        if self.request.method == "POST":
+            return CreateWebhookSerializer
+        return WebhookSerializer
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().list(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": status.HTTP_200_OK,
+                "message": "Webhooks fetched successfully.",
+                "data": response.data,
+            },
+            status.HTTP_200_OK,
+        )
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().create(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": status.HTTP_201_CREATED,
+                "message": "Webhook created successfully.",
+                "data": response.data,
+            },
+            status.HTTP_201_CREATED,
         )
