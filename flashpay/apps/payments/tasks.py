@@ -14,9 +14,10 @@ from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
 
 
-@task(retries=5, retry_delay=10)
+@task(retries=3, retry_delay=10)
 def send_tx_status_notification(account: Account, transaction: Transaction) -> bool:
     # sends webhook notification to set webhook url
+    print(Webhook.objects.filter(account=account))
     try:
         webhook = Webhook.objects.get(account=account, network=account.network)
     except Webhook.DoesNotExist as e:
