@@ -31,7 +31,7 @@ class PublicKeyAuthentication(BaseAuthentication):
             # in some cases like `payment link detail view`, the base64 encoded format of the
             # public key can be used.
             try:
-                public_key_query = Q(public_key=public_key) | Q(public_key=b64decode(public_key))
+                public_key_query = Q(public_key=b64decode(public_key).decode())
             except binascii.Error:
                 public_key_query = Q(public_key=public_key)
             api_key = APIKey.objects.select_related("account").get(public_key_query)
