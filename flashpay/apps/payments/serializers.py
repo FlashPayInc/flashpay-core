@@ -173,6 +173,7 @@ class PaymentLinkSerializer(ModelSerializer):
             "description",
             "slug",
             "amount",
+            "total_revenue",
             "image_url",
             "is_active",
             "has_fixed_amount",

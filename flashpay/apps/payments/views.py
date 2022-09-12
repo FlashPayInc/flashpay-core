@@ -206,14 +206,18 @@ class TransactionsView(ListCreateAPIView):
         )
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        response = super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        transaction = serializer.save()
+        headers = self.get_success_headers(serializer.data)
         return Response(
             {
                 "status_code": status.HTTP_201_CREATED,
                 "message": "Transaction created successfully",
-                "data": response.data,
+                "data": TransactionDetailSerializer(transaction).data,
             },
             status.HTTP_201_CREATED,
+            headers=headers,
         )
 
 

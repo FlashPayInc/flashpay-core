@@ -67,6 +67,7 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     response = api_client.get(f"/api/payment-links/{payment_link.slug}")
     assert response.status_code == 200
     assert response.data["data"]["image_url"] == settings.DEFAULT_PAYMENT_LINK_IMAGE
+    assert "total_revenue" in response.data["data"]
     assert response.data["message"] == "Payment Link returned successfully"
 
     # Retrieve Payment Link 404
@@ -322,6 +323,9 @@ def test_initialize_transaction(
     response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 201
     assert "Transaction created successfully" in response.data["message"]
+    assert response.data["data"]["asset"]["asa_id"] == 0
+    assert response.data["data"]["asset"]["short_name"] == "ALGO"
+    assert response.data["data"]["asset"]["long_name"] == "Algorand"
 
     # check that the created link is present in db
     transaction = Transaction.objects.first()
