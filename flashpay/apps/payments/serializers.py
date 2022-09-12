@@ -157,6 +157,7 @@ class TransactionDetailSerializer(ModelSerializer):
 
 
 class PaymentLinkSerializer(ModelSerializer):
+    account = SerializerMethodField()
     asset = AssetSerializer()
     image_url = SerializerMethodField()
     transactions = TransactionSerializer(many=True)
@@ -164,11 +165,15 @@ class PaymentLinkSerializer(ModelSerializer):
     def get_image_url(self, obj: PaymentLink) -> str:
         return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
 
+    def get_account(self, obj: PaymentLink) -> str:
+        return obj.account.address
+
     class Meta:
         model = PaymentLink
         fields = (
             "uid",
             "asset",
+            "account",
             "name",
             "description",
             "slug",
