@@ -6,10 +6,16 @@ from algosdk.error import IndexerHTTPError
 from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.exceptions import MethodNotAllowed
-from rest_framework.generics import GenericAPIView, ListCreateAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import (
+    GenericAPIView,
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveUpdateAPIView,
+)
 from rest_framework.parsers import BaseParser, FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.request import Request
@@ -24,9 +30,10 @@ from flashpay.apps.account.authentication import (
 from flashpay.apps.account.models import APIKey
 from flashpay.apps.core.models import Network
 from flashpay.apps.core.utils import encrypt_fernet_message
-from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionStatus
+from flashpay.apps.payments.models import DailyRevenue, PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import (
     CreatePaymentLinkSerializer,
+    DailyRevenueSerializer,
     PaymentLinkSerializer,
     TransactionDetailSerializer,
     TransactionSerializer,
@@ -315,3 +322,42 @@ class VerifyTransactionView(GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class DailyRevenueView(ListAPIView):
+    authentication_classes = [
+        CustomJWTAuthentication,
+    ]
+    permission_classes = [IsAuthenticated]
+    serializer_class = DailyRevenueSerializer
+
+    def get_queryset(self) -> QuerySet:
+        asa_id = self.request.query_params.get("asa_id", None)
+        date_range = self.request.query_params.get("date_range")
+        qs = DailyRevenue.objects.filter(
+            account=self.request.user,
+            asset__asa_id=asa_id,
+            network=self.request.network,
+        )  # type: ignore
+        if date_range == "30d":
+            end = timezone.now()
+            start = timezone.now() - timezone.timedelta(days=30)
+            qs = qs.filter(created_at__date__lte=end.date(), created_at__date_gte=start.date())
+        if date_range == "year":
+            qs = qs.filter(created_at__year=timezone.now().year)
+        if date_range == "6m":
+            end = timezone.now()
+            start = timezone.now() - timezone.timedelta(days=30 * 6)
+            qs = qs.filter(created_at__date__lte=end.date(), created_at__date_gte=start.date())
+        return qs
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().list(request, *args, **kwargs)
+        return Response(
+            {
+                "status_code": status.HTTP_200_OK,
+                "message": "Transactions returned successfully",
+                "data": response.data,
+            },
+            status.HTTP_200_OK,
+        )

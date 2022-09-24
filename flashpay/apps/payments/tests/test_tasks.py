@@ -4,13 +4,24 @@ from uuid import UUID
 import pytest
 
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework.test import APIClient
 
 from flashpay.apps.account.models import Account
 from flashpay.apps.core.models import Asset
-from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionStatus
-from flashpay.apps.payments.tasks import send_webhook_transaction_status, verify_transactions
+from flashpay.apps.payments.models import (
+    DailyRevenue,
+    Network,
+    PaymentLink,
+    Transaction,
+    TransactionStatus,
+)
+from flashpay.apps.payments.tasks import (
+    calculate_daily_revenue,
+    send_webhook_transaction_status,
+    verify_transactions,
+)
 
 
 @pytest.mark.django_db
@@ -66,3 +77,139 @@ def test_verify_transactions_task(
     send_webhook_transaction_status.call_local(payment_link.account, transaction)
     assert transaction.txn_hash == "F23RSTSTWEWMX3LWZ3ZEUHRWFPOIXXAPOWS2DJ7YHK5NC3VKKTDA"
     assert transaction.status == TransactionStatus.SUCCESS
+
+
+@pytest.mark.django_db
+def test_testnet_revenue_calculator(
+    api_client: APIClient, test_opted_in_account: Tuple[Account, Any]
+) -> None:
+    account = test_opted_in_account[0]
+
+    # Create Asset
+    usdc = Asset.objects.create(
+        asa_id=10458941,
+        short_name="USDC",
+        long_name="USDC",
+        image_url="https://hi.com/usdc",
+        decimals=6,
+    )
+    algo = Asset.objects.create(
+        asa_id=0,
+        short_name="ALGO",
+        long_name="Algorand",
+        image_url="https://hi.com/algo",
+        decimals=6,
+    )
+
+    # Create Transactions
+    Transaction.objects.create(
+        txn_reference="fp_hello_hii",
+        txn_type="payment_link",
+        amount=100,
+        asset=usdc,
+        recipient=str(account.address),
+        status=TransactionStatus.SUCCESS,
+        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+    )
+    Transaction.objects.create(
+        txn_reference="fp_hello_hii_hello",
+        txn_type="payment_link",
+        amount=100,
+        asset=algo,
+        recipient=str(account.address),
+        status=TransactionStatus.SUCCESS,
+        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+    )
+
+    # Calculate Daily Revenue
+    calculate_daily_revenue(Network.TESTNET)
+
+    # Check Tests
+    algo_revenue = DailyRevenue.objects.filter(
+        created_at__date=timezone.now().date(),
+        asset=algo,
+        network=Network.TESTNET,
+        account=account,
+    )
+    usdc_revenue = DailyRevenue.objects.filter(
+        created_at__date=timezone.now().date(),
+        asset=usdc,
+        network=Network.TESTNET,
+        account=account,
+    )
+    assert algo_revenue.exists()
+    assert algo_revenue.count() == 1
+    assert algo_revenue.first().amount == 100  # type: ignore
+    assert usdc_revenue.exists()
+    assert usdc_revenue.count() == 1
+    assert usdc_revenue.first().amount == 100  # type: ignore
+
+
+@pytest.mark.django_db
+def test_mainnet_revenue_calculator(
+    api_client: APIClient, test_opted_in_account: Tuple[Account, Any]
+) -> None:
+    account = test_opted_in_account[0]
+
+    # Create Asset
+    usdc = Asset.objects.create(
+        asa_id=10458941,
+        short_name="USDC",
+        long_name="USDC",
+        image_url="https://hi.com/usdc",
+        decimals=6,
+        network=Network.MAINNET,
+    )
+    algo = Asset.objects.create(
+        asa_id=0,
+        short_name="ALGO",
+        long_name="Algorand",
+        image_url="https://hi.com/algo",
+        decimals=6,
+        network=Network.MAINNET,
+    )
+
+    # Create Transactions
+    Transaction.objects.create(
+        txn_reference="fp_hello_hii",
+        txn_type="payment_link",
+        amount=100,
+        asset=usdc,
+        recipient=str(account.address),
+        status=TransactionStatus.SUCCESS,
+        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+        network=Network.MAINNET,
+    )
+    Transaction.objects.create(
+        txn_reference="fp_hello_hii_hello",
+        txn_type="payment_link",
+        amount=100,
+        asset=algo,
+        recipient=str(account.address),
+        status=TransactionStatus.SUCCESS,
+        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+        network=Network.MAINNET,
+    )
+
+    # Calculate Daily Revenue
+    calculate_daily_revenue(Network.MAINNET)
+
+    # Check Tests
+    algo_revenue = DailyRevenue.objects.filter(
+        created_at__date=timezone.now().date(),
+        asset=algo,
+        network=Network.MAINNET,
+        account=account,
+    )
+    usdc_revenue = DailyRevenue.objects.filter(
+        created_at__date=timezone.now().date(),
+        asset=usdc,
+        network=Network.MAINNET,
+        account=account,
+    )
+    assert algo_revenue.exists()
+    assert algo_revenue.count() == 1
+    assert algo_revenue.first().amount == 100  # type: ignore
+    assert usdc_revenue.exists()
+    assert usdc_revenue.count() == 1
+    assert usdc_revenue.first().amount == 100  # type: ignore
