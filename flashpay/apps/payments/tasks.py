@@ -1,3 +1,5 @@
+from logging import getLogger
+
 import hmac
 import json
 from logging import getLogger
@@ -16,6 +18,8 @@ from flashpay.apps.core.models import Asset, Network
 from flashpay.apps.payments.models import DailyRevenue, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
+
+logger = getLogger(__name__)
 
 logger = getLogger("huey")
 
@@ -137,10 +141,16 @@ def verify_transactions() -> None:
 @db_periodic_task(crontab(day="*/1"))
 @lock_task("lock-tesnet-daily-revenue-calculation")
 def calculate_testnet_daily_revenue() -> None:
-    calculate_daily_revenue(Network.TESTNET)
+    try:
+        calculate_daily_revenue(Network.TESTNET)
+    except Exception as e:
+        logger.exception("An Error Occurred While Running Testnet DailyRevenue Task: %s", e)
 
 
 @db_periodic_task(crontab(day="*/1"))
 @lock_task("lock-mainnet-daily-revenue-calculation")
 def calculate_mainnet_daily_transaction() -> None:
-    calculate_daily_revenue(Network.MAINNET)
+    try:
+        calculate_daily_revenue(Network.MAINNET)
+    except Exception as e:
+        logger.exception("An Error Occurred While Running Testnet DailyRevenue Task: %s", e)
