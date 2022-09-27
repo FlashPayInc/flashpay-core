@@ -132,6 +132,10 @@ class TransactionSerializer(ModelSerializer):
                 raise ValidationError({"amount": "payment link has fixed amount"})
             if attrs["recipient"] != payment_link.account.address:  # type: ignore[union-attr]
                 raise ValidationError({"recipient": "recipient does not have a payment link"})
+            if attrs["asset"] != payment_link.asset:
+                raise ValidationError(
+                    {"asset": "payment link asset does not match specified asset"}
+                )
 
         return super().validate(attrs)
 
@@ -166,7 +170,7 @@ class PaymentLinkSerializer(ModelSerializer):
         return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
 
     def get_creator(self, obj: PaymentLink) -> str:
-        return obj.account.address
+        return obj.account.address  # type: ignore
 
     class Meta:
         model = PaymentLink
