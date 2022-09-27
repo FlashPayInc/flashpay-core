@@ -33,7 +33,7 @@ def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
 
     # Fetch Transactions Endpoint
     response6 = api_client.get(
-        "/api/transactions?payment_link=4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c"
+        "/api/transactions?slug=4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c"
     )
     assert response6.status_code == 401
 
@@ -307,7 +307,7 @@ def test_initialize_transaction(
 
     # Fetch payment link transactions 404
     response = api_client.get(
-        "/api/transactions?payment_link=04e88d1a-ee77-4c46-86a9-6636859c6571"
+        "/api/transactions?slug=04e88d1a-ee77-4c46-86a9-6636859c6571"
     )
     assert response.status_code == 404
 
@@ -337,8 +337,8 @@ def test_initialize_transaction(
     assert len(response.data["data"]["results"]) == 1
     assert "Transactions returned successfully" in response.data["message"]
 
-    # Fetch payment link transactions Endpoint
-    response = api_client.get(f"/api/transactions?payment_link={payment_link.uid}")
+    # Fetch payment link transactions Endpoint slug
+    response = api_client.get(f"/api/transactions?slug={payment_link.slug}")
     assert response.status_code == 200
     assert len(response.data["data"]["results"]) == 1
     assert "Transactions returned successfully" in response.data["message"]

@@ -179,18 +179,13 @@ class TransactionsView(ListCreateAPIView):
         return [PublicKeyAuthentication(), SecretKeyAuthentication()]
 
     def get_queryset(self) -> QuerySet:
-        payment_link_uid = self.request.query_params.get("payment_link", None)
+        slug = self.request.query_params.get("slug", None)
         qs = Transaction.objects.filter(
             recipient=self.request.user.address,  # type: ignore[union-attr]
             network=self.request.network,
         )
-        if payment_link_uid:
-            # validate the uuid
-            try:
-                UUID(payment_link_uid, version=4)
-            except ValueError:
-                raise ValidationError({"payment_link_uid": "Payment link is not valid!"})
-            payment_link = get_object_or_404(PaymentLink, uid=payment_link_uid)
+        if slug:
+            payment_link = get_object_or_404(PaymentLink, slug=slug)
             qs = qs.filter(txn_reference__icontains=payment_link.uid.hex)
         return qs
 
