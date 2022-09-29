@@ -1,15 +1,14 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Type
-from uuid import UUID
 
 from algosdk.error import IndexerHTTPError
 
 from django.conf import settings
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
-from rest_framework.exceptions import MethodNotAllowed, ValidationError
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.generics import GenericAPIView, ListCreateAPIView, RetrieveUpdateAPIView
 from rest_framework.parsers import BaseParser, FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -181,7 +180,7 @@ class TransactionsView(ListCreateAPIView):
     def get_queryset(self) -> QuerySet:
         slug = self.request.query_params.get("slug", None)
         qs = Transaction.objects.filter(
-            recipient=self.request.user.address,  # type: ignore[union-attr]
+            Q(recipient=self.request.user.address) | Q(sender=self.request.user.address),  # type: ignore[union-attr]  # noqa: E501
             network=self.request.network,
         )
         if slug:
