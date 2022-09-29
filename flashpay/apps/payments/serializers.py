@@ -166,7 +166,7 @@ class PaymentLinkSerializer(ModelSerializer):
         return str(obj.image.url) if bool(obj.image) else str(settings.DEFAULT_PAYMENT_LINK_IMAGE)
 
     def get_creator(self, obj: PaymentLink) -> str:
-        return obj.account.address
+        return obj.account.address  # type: ignore
 
     class Meta:
         model = PaymentLink
