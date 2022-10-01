@@ -51,7 +51,7 @@ def test_account() -> Any:
         network=Network.MAINNET,
     )
     auth_token = RefreshToken.for_user(account)
-    return (account, auth_token)
+    return account, auth_token
 
 
 @pytest.fixture
@@ -59,22 +59,8 @@ def test_opted_in_account() -> Any:
     account = Account.objects.create(
         address="J7ZIYHAHBSNHO5SDR44WY3R4GKSBA6DWJGNUNYB2F3SNMEU2WAVY6OTFNQ", is_verified=True
     )
-    test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
-    main_secret, main_public = generate_api_key(account.address, Network.MAINNET)
-    APIKey.objects.create(
-        secret_key=test_secret,
-        public_key=test_public,
-        account=account,
-        network=Network.TESTNET,
-    )
-    APIKey.objects.create(
-        secret_key=main_secret,
-        public_key=main_public,
-        account=account,
-        network=Network.MAINNET,
-    )
     auth_token = RefreshToken.for_user(account)
-    return (account, auth_token)
+    return account, auth_token
 
 
 @pytest.fixture
@@ -97,4 +83,4 @@ def api_key_account() -> Any:
         account=account,
         network=Network.MAINNET,
     )
-    return (test_api_key, main_api_key, account)
+    return test_api_key, main_api_key, account

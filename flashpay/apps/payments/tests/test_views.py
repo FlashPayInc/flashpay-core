@@ -32,9 +32,7 @@ def test_payment_link_crud_no_auth(api_client: APIClient) -> None:
     assert response5.status_code == 401
 
     # Fetch Transactions Endpoint
-    response6 = api_client.get(
-        "/api/transactions?slug=4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c"
-    )
+    response6 = api_client.get("/api/transactions?slug=4cd2344b-8c24-4cc3-8fb1-f84a249d5b0c")
     assert response6.status_code == 401
 
 
@@ -205,7 +203,6 @@ def test_initialize_transaction_invalid_address(
 def test_initialize_transaction_wrong_amount(
     api_client: APIClient,
     api_key_account: Any,
-    test_account: Tuple[Account, Any],
 ) -> None:
     testnet_api_key = api_key_account[0]
     api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
@@ -223,7 +220,7 @@ def test_initialize_transaction_wrong_amount(
         asset=asset,
         amount=100,
         has_fixed_amount=True,
-        account=test_account[0],
+        account=api_key_account[2],
     )
 
     data = {
@@ -231,17 +228,61 @@ def test_initialize_transaction_wrong_amount(
         "asset": asset.asa_id,
         "payment_link": payment_link.uid,
         "txn_type": "payment_link",
-        "recipient": "3UECD5MS3SEOM64LOWB5GFWDZM7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW",
-        "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
+        "recipient": payment_link.account.address,  # type: ignore
+        "sender": "XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     }
     response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 400
+    assert response.data["data"]["amount"][0] == "payment link has fixed amount"
+
+
+@pytest.mark.django_db
+def test_initialize_transaction_wrong_asset(
+    api_client: APIClient,
+    api_key_account: Any,
+) -> None:
+    testnet_api_key = api_key_account[0]
+    api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
+
+    algo = Asset.objects.create(
+        asa_id=0,
+        short_name="ALGO",
+        long_name="Algorand",
+        image_url="https://hi.com/algo",
+        decimals=6,
+    )
+    usdc = Asset.objects.create(
+        asa_id=10458941,
+        short_name="USDC",
+        long_name="USDC",
+        image_url="https://hi.com/usdc",
+        decimals=6,
+    )
+    payment_link = PaymentLink.objects.create(
+        name="Test Link",
+        description="test",
+        asset=usdc,
+        amount=100,
+        has_fixed_amount=True,
+        account=api_key_account[2],
+    )
+
+    data = {
+        "amount": 100,
+        "asset": algo.asa_id,
+        "payment_link": payment_link.uid,
+        "txn_type": "payment_link",
+        "recipient": payment_link.account.address,  # type: ignore
+        "sender": "XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+    }
+    response = api_client.post("/api/transactions", data=data)
+    assert response.status_code == 400
+    assert response.data["data"]["asset"][0] == "payment link asset does not match specified asset"
 
 
 @pytest.mark.django_db
 def test_initialize_transaction_recipient_not_opted_in(
     api_client: APIClient,
-    test_account: Tuple[Account, Any],
     api_key_account: Any,
 ) -> None:
     testnet_api_key = api_key_account[0]
@@ -261,7 +302,7 @@ def test_initialize_transaction_recipient_not_opted_in(
         description="test",
         asset=asset,
         amount=100,
-        account=test_account[0],
+        account=api_key_account[2],
     )
 
     data = {
@@ -270,10 +311,11 @@ def test_initialize_transaction_recipient_not_opted_in(
         "payment_link": payment_link.uid,
         "txn_type": "payment_link",
         "recipient": payment_link.account.address,  # type: ignore
-        "sender": "7IPBQOUG4AQPAIYEYOIXOOFCQXYUSKVW3UECD5MS3SEOM64LOWB5GFWDZM",
+        "sender": "XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     }
     response = api_client.post("/api/transactions", data=data)
     assert response.status_code == 400
+    assert response.data["data"]["recipient"][0] == "recipient is not opted in to the asset."
 
 
 @pytest.mark.django_db
@@ -306,9 +348,7 @@ def test_initialize_transaction(
     assert "Transactions returned successfully" in response.data["message"]
 
     # Fetch payment link transactions 404
-    response = api_client.get(
-        "/api/transactions?slug=04e88d1a-ee77-4c46-86a9-6636859c6571"
-    )
+    response = api_client.get("/api/transactions?slug=04e88d1a-ee77-4c46-86a9-6636859c6571")
     assert response.status_code == 404
 
     # Create Payment Link Transaction
