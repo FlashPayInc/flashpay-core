@@ -8,7 +8,7 @@ from django.conf import settings
 from rest_framework.test import APIClient
 
 from flashpay.apps.account.models import Account
-from flashpay.apps.core.models import Asset
+from flashpay.apps.core.models import Asset, Network
 from flashpay.apps.payments.models import PaymentLink, Transaction
 
 
@@ -45,7 +45,11 @@ def test_payment_link_crud_secret_key_auth(api_client: APIClient, api_key_accoun
     api_client.credentials(HTTP_X_SECRET_KEY=testnet_api_key.secret_key)
 
     asset = Asset.objects.create(
-        asa_id=1, short_name="ALGO", long_name="Algorand", image_url="https://hi.com/algo"
+        asa_id=1,
+        short_name="ALGO",
+        long_name="Algorand",
+        image_url="https://hi.com/algo",
+        network=Network.TESTNET,
     )
     data = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 40}
     response = api_client.post("/api/payment-links", data=data)
@@ -100,6 +104,7 @@ def test_payment_link_crud_custom_jwt_auth(api_client: APIClient, test_account: 
         long_name="Algorand",
         image_url="https://hi.com/algo",
         decimals=6,
+        network=Network.TESTNET,
     )
     data = {"name": "Test", "description": "test", "asset": asset.asa_id, "amount": 40}
     response = api_client.post("/api/payment-links", data=data)
@@ -213,6 +218,7 @@ def test_initialize_transaction_wrong_amount(
         long_name="Algorand",
         image_url="https://hi.com/algo",
         decimals=6,
+        network=Network.TESTNET,
     )
     payment_link = PaymentLink.objects.create(
         name="Test Link",
@@ -250,6 +256,7 @@ def test_initialize_transaction_wrong_asset(
         long_name="Algorand",
         image_url="https://hi.com/algo",
         decimals=6,
+        network=Network.TESTNET,
     )
     usdc = Asset.objects.create(
         asa_id=10458941,
@@ -257,6 +264,7 @@ def test_initialize_transaction_wrong_asset(
         long_name="USDC",
         image_url="https://hi.com/usdc",
         decimals=6,
+        network=Network.TESTNET,
     )
     payment_link = PaymentLink.objects.create(
         name="Test Link",
@@ -295,6 +303,7 @@ def test_initialize_transaction_recipient_not_opted_in(
         long_name="Tether USDt",
         image_url="https://hi.com/usdt",
         decimals=6,
+        network=Network.TESTNET,
     )
 
     payment_link = PaymentLink.objects.create(
@@ -332,6 +341,7 @@ def test_initialize_transaction(
         long_name="Algorand",
         image_url="https://hi.com/algo",
         decimals=6,
+        network=Network.TESTNET,
     )
     payment_link = PaymentLink.objects.create(
         name="Test Link",
