@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Type
 from algosdk.error import IndexerHTTPError
 
 from django.conf import settings
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
@@ -180,7 +180,7 @@ class TransactionsView(ListCreateAPIView):
     def get_queryset(self) -> QuerySet:
         slug = self.request.query_params.get("slug", None)
         qs = Transaction.objects.filter(
-            recipient=self.request.user.address,  # type: ignore[union-attr]
+            Q(recipient=self.request.user.address) | Q(sender=self.request.user.address),  # type: ignore[union-attr]  # noqa: E501
             network=self.request.network,
         )
         if slug:
