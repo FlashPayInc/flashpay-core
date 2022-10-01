@@ -105,3 +105,25 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class DailyRevenue(BaseModel):
+    account = models.ForeignKey(
+        to="account.Account",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=False,
+    )
+    asset = models.ForeignKey(
+        "core.Asset",
+        on_delete=models.DO_NOTHING,
+        null=False,
+        blank=False,
+    )
+    amount = models.DecimalField(max_digits=16, decimal_places=4, null=False, blank=False)
+
+    def __str__(self) -> str:
+        return f"DailyRevenue for {self.account}"
+
+    class Meta:
+        ordering = ["created_at"]

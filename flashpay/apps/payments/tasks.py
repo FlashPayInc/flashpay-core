@@ -5,20 +5,22 @@ from logging import getLogger
 import requests
 from algosdk.error import IndexerHTTPError
 from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, lock_task, task
+from huey.contrib.djhuey import db_periodic_task, db_task, lock_task
 
 from django.conf import settings
+from django.db.models import Sum
+from django.utils import timezone
 
 from flashpay.apps.account.models import Account, APIKey, Webhook
-from flashpay.apps.core.models import Network
-from flashpay.apps.payments.models import Transaction, TransactionStatus
+from flashpay.apps.core.models import Asset, Network
+from flashpay.apps.payments.models import DailyRevenue, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
 
-logger = getLogger("huey")
+logger = getLogger(__name__)
 
 
-@task(retries=5, retry_delay=1800)
+@db_task(retries=5, retry_delay=1800)
 def send_webhook_transaction_status(account: Account, transaction: Transaction) -> None:
     """Task that sends webhook confirmation to users on successful transaction.
     The request times out if a response is not received in 10 seconds.
@@ -71,6 +73,29 @@ def send_webhook_transaction_status(account: Account, transaction: Transaction) 
                 )
 
 
+def calculate_daily_revenue(network: Network) -> None:
+    date = timezone.now().date()
+    accounts = Account.objects.filter(is_verified=True)
+    assets = Asset.objects.filter(network=network)
+    for account in accounts:
+        for asset in assets:
+            revenue_exists = DailyRevenue.objects.filter(
+                network=network, account=account, asset=asset, created_at__date=date
+            ).exists()
+            if revenue_exists:
+                continue
+            total_revenue = Transaction.objects.filter(
+                asset=asset,
+                status=TransactionStatus.SUCCESS,
+                updated_at__date=date,
+                recipient__iexact=account.address,
+            ).aggregate(total=Sum("amount"))["total"]
+            if total_revenue is not None:
+                DailyRevenue.objects.create(
+                    account=account, asset=asset, amount=total_revenue, network=network
+                )
+
+
 @db_periodic_task(crontab(minute="*/1"))
 @lock_task("lock-verify-txn")
 def verify_transactions() -> None:
@@ -107,3 +132,27 @@ def verify_transactions() -> None:
                         send_webhook_transaction_status(account, db_txn)
         except IndexerHTTPError:
             continue
+
+
+@db_periodic_task(crontab(day="*/1"))
+@lock_task("lock-tesnet-daily-revenue-calculation")
+def calculate_testnet_daily_revenue() -> None:
+    try:
+        calculate_daily_revenue(Network.TESTNET)
+    except Exception:
+        logger.exception(
+            "An error occurred while calculating testnet daily revenue due to: ",
+            exc_info=True,
+        )
+
+
+@db_periodic_task(crontab(day="*/1"))
+@lock_task("lock-mainnet-daily-revenue-calculation")
+def calculate_mainnet_daily_transaction() -> None:
+    try:
+        calculate_daily_revenue(Network.MAINNET)
+    except Exception:
+        logger.exception(
+            "An error occurred while calculating mainnet daily revenue due to: ",
+            exc_info=True,
+        )

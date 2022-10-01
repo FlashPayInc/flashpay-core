@@ -13,7 +13,7 @@ from rest_framework.serializers import (
 )
 
 from flashpay.apps.core.serializers import AssetSerializer
-from flashpay.apps.payments.models import PaymentLink, Transaction
+from flashpay.apps.payments.models import DailyRevenue, PaymentLink, Transaction
 from flashpay.apps.payments.utils import check_if_address_opted_in_asa, generate_txn_reference
 from flashpay.apps.payments.validators import IsValidAlgorandAddress
 
@@ -196,3 +196,9 @@ class PaymentLinkSerializer(ModelSerializer):
 
 class VerifyTransactionSerializer(Serializer):
     txn_reference = CharField(max_length=42)
+
+
+class DailyRevenueSerializer(ModelSerializer):
+    class Meta:
+        model = DailyRevenue
+        fields = ("asset", "amount", "created_at")

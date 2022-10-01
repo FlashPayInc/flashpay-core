@@ -8,8 +8,9 @@ from django.conf import settings
 from rest_framework.test import APIClient
 
 from flashpay.apps.account.models import Account
-from flashpay.apps.core.models import Asset, Network
-from flashpay.apps.payments.models import PaymentLink, Transaction
+from flashpay.apps.core.models import Asset
+from flashpay.apps.payments.models import Network, PaymentLink, Transaction, TransactionStatus
+from flashpay.apps.payments.tasks import calculate_daily_revenue
 
 
 @pytest.mark.django_db
@@ -583,3 +584,37 @@ def test_verify_transaction_with_wrong_txn_hash_and_txn_note(
         "Not Found: /api/payment-links/transactions/verify/fp_3fe0321ec44e44adb03a0348ad7d6f78_03eabc"  # noqa: E501
         in response.json()["message"]  # type: ignore  # noqa: E501 it returns JsonResponse not Response so there's no `.data`
     )
+
+
+@pytest.mark.django_db
+def test_daily_revenue(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
+    account, auth_token = test_account
+    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+
+    # Create Asset
+    usdc = Asset.objects.create(
+        asa_id=10458941,
+        short_name="USDC",
+        long_name="USDC",
+        image_url="https://hi.com/usdc",
+        decimals=6,
+        network=Network.TESTNET,
+    )
+
+    # Create Transactions
+    Transaction.objects.create(
+        txn_reference="fp_hello_hii",
+        txn_type="payment_link",
+        amount=100,
+        asset=usdc,
+        recipient=str(account.address),
+        status=TransactionStatus.SUCCESS,
+        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+    )
+
+    # Calculate Daily Revenue
+    calculate_daily_revenue(Network.TESTNET)
+
+    response = api_client.get(f"/api/daily-revenue?asa_id={usdc.asa_id}")
+    assert response.status_code == 200
+    assert len(response.data["data"]["results"]) == 1
