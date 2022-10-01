@@ -16,10 +16,10 @@ from flashpay.apps.core.models import Network
 @pytest.mark.django_db
 def test_account_auth_view(api_client: APIClient) -> None:
     fernet = Fernet(settings.ENCRYPTION_KEY.encode())
-    # This is a valid testnet transaction.
-    tx_hash = "JOD624NMQOLGSWY5B4OV377AHRESCRONHZ4G3L3EAI5PKGOOKDPQ"
-    address = "4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM"
-    nonce = "12"
+    # This is a valid mainnet transaction.
+    tx_hash = "27PZRMWDLJCCEBI7YYGYGWVFY2VB3HPVUV63T4ERIQKROFFFL2NQ"
+    address = "MNUPZ7LXWZGJKEOPX43PHIBPSWAES3NCK3W25DHEMXB7C2MHBLTUSA7CGM"
+    nonce = "1"
 
     # first connect wallet
     b64_encrypted_payload = b64encode(fernet.encrypt(f"100,{address}".encode())).decode()
@@ -55,10 +55,11 @@ def test_account_auth_view(api_client: APIClient) -> None:
 @pytest.mark.django_db
 def test_account_setup_view_errors(api_client: APIClient) -> None:
     fernet = Fernet(settings.ENCRYPTION_KEY.encode())
-    valid_tx_hash = "JOD624NMQOLGSWY5B4OV377AHRESCRONHZ4G3L3EAI5PKGOOKDPQ"
-    valid_address = "4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM"
+    # This is a valid mainnet transaction.
+    valid_tx_hash = "27PZRMWDLJCCEBI7YYGYGWVFY2VB3HPVUV63T4ERIQKROFFFL2NQ"
+    valid_address = "MNUPZ7LXWZGJKEOPX43PHIBPSWAES3NCK3W25DHEMXB7C2MHBLTUSA7CGM"
+    nonce = "1"
     unverified_address = generate_account()[1]
-    nonce = "12"
 
     # first connect wallet for both addresses
     b64_encrypted_payload = b64encode(
@@ -68,7 +69,7 @@ def test_account_setup_view_errors(api_client: APIClient) -> None:
     assert response.status_code == 401
     assert "Please set up your wallet and try again." in response.data["message"]
 
-    b64_encrypted_payload = b64encode(fernet.encrypt(f"500,{valid_address}".encode())).decode()
+    b64_encrypted_payload = b64encode(fernet.encrypt(f"{nonce},{valid_address}".encode())).decode()
     response = api_client.post("/api/accounts/connect", data={"payload": b64_encrypted_payload})
     assert response.status_code == 401
     assert "Please set up your wallet and try again." in response.data["message"]
