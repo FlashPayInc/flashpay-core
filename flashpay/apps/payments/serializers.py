@@ -201,4 +201,4 @@ class VerifyTransactionSerializer(Serializer):
 class DailyRevenueSerializer(ModelSerializer):
     class Meta:
         model = DailyRevenue
-        fields = "__all__"
+        fields = ("asset", "amount", "created_at")

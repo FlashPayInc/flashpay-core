@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('core', '0001_initial'),
-        ('account', '0002_alter_apikey_options'),
+        ('account', '0002_change_default_network_to_mainnet'),
         ('payments', '0002_normal_tx_type'),
     ]
 

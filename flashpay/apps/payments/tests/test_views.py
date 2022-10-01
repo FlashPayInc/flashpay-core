@@ -598,6 +598,7 @@ def test_daily_revenue(api_client: APIClient, test_account: Tuple[Account, Any])
         long_name="USDC",
         image_url="https://hi.com/usdc",
         decimals=6,
+        network=Network.TESTNET,
     )
 
     # Create Transactions

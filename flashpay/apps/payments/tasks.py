@@ -1,5 +1,3 @@
-from logging import getLogger
-
 import hmac
 import json
 from logging import getLogger
@@ -20,8 +18,6 @@ from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
 
 logger = getLogger(__name__)
-
-logger = getLogger("huey")
 
 
 @db_task(retries=5, retry_delay=1800)
@@ -94,7 +90,7 @@ def calculate_daily_revenue(network: Network) -> None:
                 updated_at__date=date,
                 recipient__iexact=account.address,
             ).aggregate(total=Sum("amount"))["total"]
-            if total_revenue > 0:
+            if total_revenue is not None:
                 DailyRevenue.objects.create(
                     account=account, asset=asset, amount=total_revenue, network=network
                 )
@@ -143,8 +139,11 @@ def verify_transactions() -> None:
 def calculate_testnet_daily_revenue() -> None:
     try:
         calculate_daily_revenue(Network.TESTNET)
-    except Exception as e:
-        logger.exception("An Error Occurred While Running Testnet DailyRevenue Task: %s", e)
+    except Exception:
+        logger.exception(
+            "An error occurred while calculating testnet daily revenue due to: ",
+            exc_info=True,
+        )
 
 
 @db_periodic_task(crontab(day="*/1"))
@@ -152,5 +151,8 @@ def calculate_testnet_daily_revenue() -> None:
 def calculate_mainnet_daily_transaction() -> None:
     try:
         calculate_daily_revenue(Network.MAINNET)
-    except Exception as e:
-        logger.exception("An Error Occurred While Running Testnet DailyRevenue Task: %s", e)
+    except Exception:
+        logger.exception(
+            "An error occurred while calculating mainnet daily revenue due to: ",
+            exc_info=True,
+        )

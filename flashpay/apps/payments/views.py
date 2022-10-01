@@ -325,9 +325,7 @@ class VerifyTransactionView(GenericAPIView):
 
 
 class DailyRevenueView(ListAPIView):
-    authentication_classes = [
-        CustomJWTAuthentication,
-    ]
+    authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = DailyRevenueSerializer
 
@@ -343,9 +341,9 @@ class DailyRevenueView(ListAPIView):
             end = timezone.now()
             start = timezone.now() - timezone.timedelta(days=30)
             qs = qs.filter(created_at__date__lte=end.date(), created_at__date_gte=start.date())
-        if date_range == "year":
+        elif date_range == "year":
             qs = qs.filter(created_at__year=timezone.now().year)
-        if date_range == "6m":
+        elif date_range == "6m":
             end = timezone.now()
             start = timezone.now() - timezone.timedelta(days=30 * 6)
             qs = qs.filter(created_at__date__lte=end.date(), created_at__date_gte=start.date())
@@ -356,7 +354,7 @@ class DailyRevenueView(ListAPIView):
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
-                "message": "Transactions returned successfully",
+                "message": "Revenue returned successfully",
                 "data": response.data,
             },
             status.HTTP_200_OK,

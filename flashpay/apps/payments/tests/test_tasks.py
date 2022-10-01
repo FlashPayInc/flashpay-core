@@ -92,6 +92,7 @@ def test_testnet_revenue_calculator(
         long_name="USDC",
         image_url="https://hi.com/usdc",
         decimals=6,
+        network=Network.TESTNET,
     )
     algo = Asset.objects.create(
         asa_id=0,
@@ -99,6 +100,7 @@ def test_testnet_revenue_calculator(
         long_name="Algorand",
         image_url="https://hi.com/algo",
         decimals=6,
+        network=Network.TESTNET,
     )
 
     # Create Transactions
@@ -176,7 +178,7 @@ def test_mainnet_revenue_calculator(
         amount=100,
         asset=usdc,
         recipient=str(account.address),
-        status=TransactionStatus.SUCCESS,
+        status=TransactionStatus.FAILED,
         sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
         network=Network.MAINNET,
     )
@@ -210,6 +212,8 @@ def test_mainnet_revenue_calculator(
     assert algo_revenue.exists()
     assert algo_revenue.count() == 1
     assert algo_revenue.first().amount == 100  # type: ignore
-    assert usdc_revenue.exists()
-    assert usdc_revenue.count() == 1
-    assert usdc_revenue.first().amount == 100  # type: ignore
+
+    # there's no usdc revenue
+    assert not usdc_revenue.exists()
+    assert usdc_revenue.count() == 0
+    assert usdc_revenue.first() is None

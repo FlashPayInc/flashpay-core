@@ -77,7 +77,7 @@ jobs:
       #----------------------------------------------
       #              run linters
       #----------------------------------------------
-      - name: Run Code Analysis
+      - name: Run Linters
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
         run: poetry run make lint

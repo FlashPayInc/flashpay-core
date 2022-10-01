@@ -123,7 +123,7 @@ class DailyRevenue(BaseModel):
     amount = models.DecimalField(max_digits=16, decimal_places=4, null=False, blank=False)
 
     def __str__(self) -> str:
-        return f"DailyRevenue for {self.account.address}"  # type: ignore
+        return f"DailyRevenue for {self.account}"
 
     class Meta:
         ordering = ["created_at"]
