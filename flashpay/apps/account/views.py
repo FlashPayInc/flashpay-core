@@ -291,7 +291,7 @@ class WebhookView(ListCreateAPIView):
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
-                "message": "Webhooks fetched successfully.",
+                "message": "Webhook fetched successfully.",
                 "data": response.data,
             },
             status.HTTP_200_OK,

@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from flashpay.apps.account.models import Account
 from flashpay.apps.core.models import Asset
 from flashpay.apps.payments.models import PaymentLink, Transaction, TransactionStatus
-from flashpay.apps.payments.tasks import send_tx_status_notification, verify_transactions
+from flashpay.apps.payments.tasks import send_webhook_transaction_status, verify_transactions
 
 
 @pytest.mark.django_db
@@ -34,7 +34,7 @@ def test_verify_transactions_task(
     data = {"url": "https://webhook.site/f43114db-7a3d-4cec-a49d-6d053b887fea"}
     response = api_client.post("/api/accounts/webhook", data=data)
     assert response.status_code == 201
-    assert response.data["data"]["network"] == "testnet"
+    assert response.data["data"]["network"] == "mainnet"
 
     # Create Payment Link
     payment_link: PaymentLink = PaymentLink.objects.create(
@@ -63,6 +63,6 @@ def test_verify_transactions_task(
     verify_transactions.call_local()
 
     transaction = get_object_or_404(Transaction, uid=transaction.uid)
-    send_tx_status_notification.call_local(payment_link.account, transaction)
+    send_webhook_transaction_status.call_local(payment_link.account, transaction)
     assert transaction.txn_hash == "F23RSTSTWEWMX3LWZ3ZEUHRWFPOIXXAPOWS2DJ7YHK5NC3VKKTDA"
     assert transaction.status == TransactionStatus.SUCCESS

@@ -98,7 +98,7 @@ class CreateWebhookSerializer(WebhookSerializer):
     def validate(self, attrs: Any) -> Any:
         network = self.context["request"].network
         account = self.context["request"].user
-        # If Webhook exists, the system deletes the keys
+        # If webhook exists, delete existing webhook
         try:
             Webhook.objects.get(account=account, network=network).delete()
         except Webhook.DoesNotExist:
