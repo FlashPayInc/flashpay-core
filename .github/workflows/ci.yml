@@ -80,7 +80,9 @@ jobs:
       - name: Run Linters
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
-        run: poetry run make lint
+        run: |
+          source $VENV
+          make lint
 
    test:
     needs: ['lint']
@@ -164,5 +166,6 @@ jobs:
         env:
           DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
         run: |
-          poetry run make test
-          poetry run python manage.py migrate --no-input
+          source $VENV
+          make test
+          python manage.py migrate --no-input
