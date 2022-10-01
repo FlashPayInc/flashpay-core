@@ -151,3 +151,37 @@ def test_update_account_network(api_client: APIClient, test_account: Tuple[Accou
     response = api_client.post("/api/accounts/network", data={"network": "mainnet"})
     assert response.status_code == 200
     assert response.data["data"]["network"] == Network.MAINNET
+
+
+@pytest.mark.django_db
+def test_webhook_crud(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
+    auth_token = test_account[1]
+    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+
+    # Create testnet webhook
+    data = {"url": "https://flashpay.netlify.app/hook"}
+    response = api_client.post("/api/accounts/webhook", data=data)
+    assert response.status_code == 201
+    assert response.data["data"]["network"] == "testnet"
+
+    # Retrieve webhook for testnet
+    response = api_client.get("/api/accounts/webhook")
+    assert response.status_code == 200
+    assert response.data["data"]["count"] == 1
+
+    # Update network to mainnet
+    api_client.post("/api/accounts/network", data={"network": "mainnet"})
+    response1 = api_client.post("/api/accounts/api-keys")
+    assert response1.status_code == 201
+    assert response1.data["data"]["network"] == "mainnet"
+
+    # Create mainnet webhook
+    data = {"url": "https://flashpay.netlify.app/hook"}
+    response = api_client.post("/api/accounts/webhook", data=data)
+    assert response.status_code == 201
+    assert response.data["data"]["network"] == "mainnet"
+
+    # Retrieve webhook for mainnet
+    response = api_client.get("/api/accounts/webhook")
+    assert response.status_code == 200
+    assert response.data["data"]["count"] == 1

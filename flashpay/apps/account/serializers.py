@@ -6,7 +6,7 @@ from cryptography.fernet import InvalidToken
 
 from rest_framework import serializers
 
-from flashpay.apps.account.models import APIKey
+from flashpay.apps.account.models import APIKey, Webhook
 from flashpay.apps.account.utils import generate_api_key
 from flashpay.apps.core.models import Network
 from flashpay.apps.core.utils import decrypt_fernet_message
@@ -83,3 +83,27 @@ class AccountSetUpSerializer(BaseAccountSerializer):
 
 class AccountNetworkUpdateSerializer(serializers.Serializer):
     network = serializers.ChoiceField(required=True, choices=Network.choices)
+
+
+class WebhookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Webhook
+        fields = ("url", "network")
+
+
+class CreateWebhookSerializer(WebhookSerializer):
+    class Meta(WebhookSerializer.Meta):
+        read_only_fields = ("network",)
+
+    def validate(self, attrs: Any) -> Any:
+        network = self.context["request"].network
+        account = self.context["request"].user
+        # If webhook exists, delete existing webhook
+        try:
+            Webhook.objects.get(account=account, network=network).delete()
+        except Webhook.DoesNotExist:
+            pass
+
+        attrs["account"] = account
+        attrs["network"] = network
+        return super().validate(attrs)
