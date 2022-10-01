@@ -108,7 +108,7 @@ class AccountSetUpView(GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        indexer_client = self.get_indexer_client(account.network)
+        indexer_client = self.get_indexer_client(Network.MAINNET)
         try:
             api_response = indexer_client.transaction(
                 txid=serializer.validated_data["txid"],
