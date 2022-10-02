@@ -3,7 +3,7 @@ from base64 import b64encode
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 from algosdk.error import IndexerHTTPError
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from django.conf import settings
 from django.db.models import QuerySet
@@ -23,8 +23,11 @@ from flashpay.apps.account.serializers import (
     APIKeySerializer,
     CreateAPIKeySerializer,
     CreateWebhookSerializer,
+    CustomTokenBlacklistSerializer,
+    CustomTokenRefreshSerializer,
     WebhookSerializer,
 )
+from flashpay.apps.account.tokens import CustomRefreshToken  # type: ignore[attr-defined]
 from flashpay.apps.account.utils import generate_api_key
 from flashpay.apps.core.models import Network
 
@@ -58,11 +61,11 @@ class AccountWalletAuthenticationView(GenericAPIView):
             )
 
         # switch to jwt auth if account is verified
-        refresh = RefreshToken.for_user(account)
+        refresh = CustomRefreshToken.for_user(account)
         return Response(
             data={
                 "status_code": status.HTTP_200_OK,
-                "message": "",
+                "message": "Account authenticated successfully",
                 "data": {
                     "access_token": str(refresh.access_token),
                     "refresh_token": str(refresh),
@@ -204,6 +207,38 @@ class AccountSetUpView(GenericAPIView):
                 "data": None,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class AccountTokenRefreshView(TokenRefreshView):  # type: ignore
+    def get_serializer_class(self) -> Type["BaseSerializer"]:
+        return CustomTokenRefreshSerializer
+
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().post(request, args, kwargs)
+        return Response(
+            data={
+                "status_code": response.status_code,
+                "message": "Token refreshed successfully",
+                "data": {
+                    "access_token": response.data["access"],
+                },
+            }
+        )
+
+
+class AccountTokenBlacklistView(TokenBlacklistView):  # type: ignore[no-any-unimported]  # noqa: E501
+    def get_serializer_class(self) -> Type["BaseSerializer"]:
+        return CustomTokenBlacklistSerializer
+
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().post(request, args, kwargs)
+        return Response(
+            data={
+                "status_code": response.status_code,
+                "message": "Token blacklisted successfully",
+                "data": None,
+            }
         )
 
 

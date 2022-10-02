@@ -3,10 +3,12 @@ from typing import Any, Dict
 
 from algosdk.encoding import is_valid_address
 from cryptography.fernet import InvalidToken
+from rest_framework_simplejwt.serializers import TokenBlacklistSerializer, TokenRefreshSerializer
 
 from rest_framework import serializers
 
 from flashpay.apps.account.models import APIKey, Webhook
+from flashpay.apps.account.tokens import CustomRefreshToken  # type: ignore[attr-defined]
 from flashpay.apps.account.utils import generate_api_key
 from flashpay.apps.core.models import Network
 from flashpay.apps.core.utils import decrypt_fernet_message
@@ -107,3 +109,11 @@ class CreateWebhookSerializer(WebhookSerializer):
         attrs["account"] = account
         attrs["network"] = network
         return super().validate(attrs)
+
+
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):  # type: ignore[no-any-unimported]  # noqa: E501
+    token_class = CustomRefreshToken
+
+
+class CustomTokenBlacklistSerializer(TokenBlacklistSerializer):  # type: ignore[no-any-unimported]  # noqa: E501
+    token_class = CustomRefreshToken
