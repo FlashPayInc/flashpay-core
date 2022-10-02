@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from flashpay.apps.account.models import Account, APIKey, Webhook
 from flashpay.apps.core.models import Asset, Network
-from flashpay.apps.payments.models import DailyRevenue, Transaction, TransactionStatus
+from flashpay.apps.payments.models import DailyRevenue, PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
 
@@ -121,6 +121,17 @@ def verify_transactions() -> None:
                 db_txn.status = TransactionStatus.SUCCESS
                 db_txn.txn_hash = onchain_txn["id"]
                 db_txn.save(update_fields=["status", "txn_hash"])
+
+                # check if the txn is related to a one-time payment link and disable it.
+                try:
+                    # at this point, a valid txn reference is expected.
+                    supposed_payment_link_uid = db_txn.txn_reference.split("_")[1]
+                    payment_link = PaymentLink.objects.get(uid=supposed_payment_link_uid)
+                    if payment_link.is_one_time and db_txn.amount > 0:
+                        payment_link.is_active = False
+                        payment_link.save()
+                except PaymentLink.DoesNotExist:
+                    pass
 
                 # only send webhook on successful transactions
                 if db_txn.status == TransactionStatus.SUCCESS:

@@ -286,12 +286,23 @@ class VerifyTransactionView(GenericAPIView):
             )
 
         # verify tx & update status and tx_hash accordingly
-        # __import__('pdb').set_trace()
         try:
             if verify_transaction(db_txn=transaction, onchain_txn=api_response["transactions"][0]):
                 transaction.status = TransactionStatus.SUCCESS
                 transaction.txn_hash = api_response["transactions"][0]["id"]
                 transaction.save(update_fields=["status", "txn_hash"])
+
+                # check if the txn is related to a one-time payment link and disable it.
+                try:
+                    # at this point, a valid txn reference is expected.
+                    supposed_payment_link_uid = txn_reference.split("_")[1]
+                    payment_link = PaymentLink.objects.get(uid=supposed_payment_link_uid)
+                    if payment_link.is_one_time and transaction.amount > 0:
+                        payment_link.is_active = False
+                        payment_link.save()
+                except PaymentLink.DoesNotExist:
+                    pass
+
                 return Response(
                     data={
                         "status_code": status.HTTP_200_OK,
