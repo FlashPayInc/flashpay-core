@@ -1,4 +1,3 @@
-from typing import Any, Tuple
 from uuid import UUID
 
 import pytest
@@ -25,36 +24,26 @@ from flashpay.apps.payments.tasks import (
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("is_account_opted_in", [True])
 def test_verify_transactions_task(
-    api_client: APIClient,
-    test_opted_in_account: Tuple[Account, Any],
+    jwt_api_client: APIClient,
+    account: Account,
+    usdc_asa: Asset,
 ) -> None:
-    auth_token = test_opted_in_account[1]
-    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
-
-    # Create Asset
-    asset = Asset.objects.create(
-        asa_id=10458941,
-        short_name="USDC",
-        long_name="USDC",
-        image_url="https://hi.com/usdc",
-        decimals=6,
-    )
-
     # Create testnet webhook
     data = {"url": "https://webhook.site/f43114db-7a3d-4cec-a49d-6d053b887fea"}
-    response = api_client.post("/api/accounts/webhook", data=data)
+    response = jwt_api_client.post("/api/accounts/webhook", data=data)
     assert response.status_code == 201
-    assert response.data["data"]["network"] == "mainnet"
+    assert response.data["data"]["network"] == "testnet"
 
     # Create Payment Link
     payment_link: PaymentLink = PaymentLink.objects.create(
         uid=UUID("399c37cb-d282-4aed-8917-38a033a1ad5b"),
         name="Test Link",
         description="test",
-        asset=asset,
+        asset=usdc_asa,
         amount=10,
-        account=test_opted_in_account[0],
+        account=account,
     )
 
     # fp_399c37cbd2824aed891738a033a1ad5b_03ef72
@@ -66,7 +55,7 @@ def test_verify_transactions_task(
         txn_reference=tx_ref,
         txn_type="payment_link",
         amount=10,
-        asset=asset,
+        asset=usdc_asa,
         recipient=str(payment_link.account.address),  # type: ignore
         sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     )
@@ -80,140 +69,100 @@ def test_verify_transactions_task(
 
 
 @pytest.mark.django_db
-def test_testnet_revenue_calculator(
-    api_client: APIClient, test_opted_in_account: Tuple[Account, Any]
+@pytest.mark.parametrize("is_account_opted_in", [True, False])
+@pytest.mark.parametrize("network", [Network.TESTNET, Network.MAINNET])
+def test_revenue_calculator(
+    api_client: APIClient,
+    account: Account,
+    algo_asa: Asset,
+    usdc_asa: Asset,
+    usdt_asa: Asset,
+    choice_asa: Asset,
+    network: Network,
+    random_algorand_address: str,
 ) -> None:
-    account = test_opted_in_account[0]
-
-    # Create Asset
-    usdc = Asset.objects.create(
-        asa_id=10458941,
-        short_name="USDC",
-        long_name="USDC",
-        image_url="https://hi.com/usdc",
-        decimals=6,
-        network=Network.TESTNET,
-    )
-    algo = Asset.objects.create(
-        asa_id=0,
-        short_name="ALGO",
-        long_name="Algorand",
-        image_url="https://hi.com/algo",
-        decimals=6,
-        network=Network.TESTNET,
-    )
-
     # Create Transactions
     Transaction.objects.create(
         txn_reference="fp_hello_hii",
         txn_type="payment_link",
-        amount=100,
-        asset=usdc,
+        amount=10000,
+        asset=usdc_asa,
         recipient=str(account.address),
         status=TransactionStatus.SUCCESS,
-        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+        sender=random_algorand_address,
+        network=network,
     )
     Transaction.objects.create(
         txn_reference="fp_hello_hii_hello",
         txn_type="payment_link",
         amount=100,
-        asset=algo,
+        asset=algo_asa,
         recipient=str(account.address),
         status=TransactionStatus.SUCCESS,
-        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
+        sender=random_algorand_address,
+        network=network,
     )
-
-    # Calculate Daily Revenue
-    calculate_daily_revenue(Network.TESTNET)
-
-    # Check Tests
-    algo_revenue = DailyRevenue.objects.filter(
-        created_at__date=timezone.now().date(),
-        asset=algo,
-        network=Network.TESTNET,
-        account=account,
-    )
-    usdc_revenue = DailyRevenue.objects.filter(
-        created_at__date=timezone.now().date(),
-        asset=usdc,
-        network=Network.TESTNET,
-        account=account,
-    )
-    assert algo_revenue.exists()
-    assert algo_revenue.count() == 1
-    assert algo_revenue.first().amount == 100  # type: ignore
-    assert usdc_revenue.exists()
-    assert usdc_revenue.count() == 1
-    assert usdc_revenue.first().amount == 100  # type: ignore
-
-
-@pytest.mark.django_db
-def test_mainnet_revenue_calculator(
-    api_client: APIClient, test_opted_in_account: Tuple[Account, Any]
-) -> None:
-    account = test_opted_in_account[0]
-
-    # Create Asset
-    usdc = Asset.objects.create(
-        asa_id=10458941,
-        short_name="USDC",
-        long_name="USDC",
-        image_url="https://hi.com/usdc",
-        decimals=6,
-        network=Network.MAINNET,
-    )
-    algo = Asset.objects.create(
-        asa_id=0,
-        short_name="ALGO",
-        long_name="Algorand",
-        image_url="https://hi.com/algo",
-        decimals=6,
-        network=Network.MAINNET,
-    )
-
-    # Create Transactions
     Transaction.objects.create(
-        txn_reference="fp_hello_hii",
+        txn_reference="fp_helii_hello",
         txn_type="payment_link",
-        amount=100,
-        asset=usdc,
+        amount=1000000,
+        asset=usdt_asa,
+        recipient=str(account.address),
+        status=TransactionStatus.SUCCESS,
+        sender=random_algorand_address,
+        network=network,
+    )
+    Transaction.objects.create(
+        txn_reference="fp_hello_hii_llo",
+        txn_type="payment_link",
+        amount=10000000,
+        asset=choice_asa,
         recipient=str(account.address),
         status=TransactionStatus.FAILED,
-        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
-        network=Network.MAINNET,
-    )
-    Transaction.objects.create(
-        txn_reference="fp_hello_hii_hello",
-        txn_type="payment_link",
-        amount=100,
-        asset=algo,
-        recipient=str(account.address),
-        status=TransactionStatus.SUCCESS,
-        sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
-        network=Network.MAINNET,
+        sender=random_algorand_address,
+        network=network,
     )
 
     # Calculate Daily Revenue
-    calculate_daily_revenue(Network.MAINNET)
+    calculate_daily_revenue(network)
 
     # Check Tests
     algo_revenue = DailyRevenue.objects.filter(
         created_at__date=timezone.now().date(),
-        asset=algo,
-        network=Network.MAINNET,
+        asset=algo_asa,
+        network=network,
         account=account,
     )
     usdc_revenue = DailyRevenue.objects.filter(
         created_at__date=timezone.now().date(),
-        asset=usdc,
-        network=Network.MAINNET,
+        asset=usdc_asa,
+        network=network,
+        account=account,
+    )
+    usdt_revenue = DailyRevenue.objects.filter(
+        created_at__date=timezone.now().date(),
+        asset=usdt_asa,
+        network=network,
+        account=account,
+    )
+    choice_coin_revenue = DailyRevenue.objects.filter(
+        created_at__date=timezone.now().date(),
+        asset=choice_asa,
+        network=network,
         account=account,
     )
     assert algo_revenue.exists()
     assert algo_revenue.count() == 1
     assert algo_revenue.first().amount == 100  # type: ignore
 
-    # there's no usdc revenue
-    assert not usdc_revenue.exists()
-    assert usdc_revenue.count() == 0
-    assert usdc_revenue.first() is None
+    assert usdc_revenue.exists()
+    assert usdc_revenue.count() == 1
+    assert usdc_revenue.first().amount == 10000  # type: ignore
+
+    assert usdt_revenue.exists()
+    assert usdt_revenue.count() == 1
+    assert usdt_revenue.first().amount == 1000000  # type: ignore
+
+    assert not choice_coin_revenue.exists()
+    assert choice_coin_revenue.count() == 0
+    assert choice_coin_revenue.first() is None

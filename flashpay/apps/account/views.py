@@ -210,6 +210,7 @@ class AccountSetUpView(GenericAPIView):
 class APIKeyView(ListCreateAPIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self) -> QuerySet:
         return APIKey.objects.filter(account=self.request.user, network=self.request.network)  # type: ignore[misc] # noqa: E501
@@ -225,7 +226,7 @@ class APIKeyView(ListCreateAPIView):
             {
                 "status_code": status.HTTP_200_OK,
                 "message": "API Keys fetched successfully.",
-                "data": response.data,
+                "data": response.data[0],  # this is always 1.
             },
             status.HTTP_200_OK,
         )
@@ -277,6 +278,7 @@ class AccountNetworkView(GenericAPIView):
 class WebhookView(ListCreateAPIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self) -> QuerySet:
         return Webhook.objects.filter(account=self.request.user, network=self.request.network)  # type: ignore[misc] # noqa: E501
@@ -292,7 +294,7 @@ class WebhookView(ListCreateAPIView):
             {
                 "status_code": status.HTTP_200_OK,
                 "message": "Webhook fetched successfully.",
-                "data": response.data,
+                "data": response.data[0],  # this is always 1.
             },
             status.HTTP_200_OK,
         )

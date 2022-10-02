@@ -8,7 +8,10 @@ from django.db import DatabaseError
 
 from rest_framework.test import APIClient
 
+from flashpay.apps.core.models import Network
 
+
+@pytest.mark.django_db
 def test_ping_view(api_client: APIClient) -> None:
     response = api_client.get("/api/core/ping")
     assert response.status_code == 200
@@ -28,25 +31,28 @@ def test_healthcheck_view(api_client: APIClient) -> None:
         assert response.status_code == 500
 
 
-def test_thirdparty_healthcheck_view(api_client: APIClient) -> None:
+@pytest.mark.django_db
+@pytest.mark.parametrize("network", [Network.TESTNET, Network.MAINNET])
+def test_thirdparty_healthcheck_view(api_client: APIClient, network: Network) -> None:
     response = api_client.get("/api/core/health/thirdparty")
     assert response.status_code == 200
 
     with mock.patch(
-        "flashpay.apps.core.views.settings.TESTNET_ALGOD_CLIENT.health",
+        f"flashpay.apps.core.views.settings.{network.value.upper()}_ALGOD_CLIENT.health",
         side_effect=AlgodHTTPError("Kaboom!"),
     ):
         response = api_client.get("/api/core/health/thirdparty")
         assert response.status_code == 503
 
     with mock.patch(
-        "flashpay.apps.core.views.settings.TESTNET_INDEXER_CLIENT.health",
+        f"flashpay.apps.core.views.settings.{network.value.upper()}_INDEXER_CLIENT.health",
         side_effect=IndexerHTTPError("Kaboom!"),
     ):
         response = api_client.get("/api/core/health/thirdparty")
         assert response.status_code == 503
 
 
+@pytest.mark.django_db
 def test_404_page(api_client: APIClient) -> None:
     response = api_client.get("/api/doesnotexist")
     assert response.status_code == 404
@@ -54,6 +60,7 @@ def test_404_page(api_client: APIClient) -> None:
     assert response.headers["Content-Type"] == "application/json"
 
 
+@pytest.mark.django_db
 def test_custom_exception_handler_response(api_client: APIClient) -> None:
     with mock.patch("flashpay.apps.core.views.PingView.get", side_effect=Exception("Kaboom!")):
         response = api_client.get("/api/core/ping")
