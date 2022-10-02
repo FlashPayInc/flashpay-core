@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 from algosdk.error import IndexerHTTPError
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from django.conf import settings
 from django.db.models import QuerySet
@@ -204,6 +205,20 @@ class AccountSetUpView(GenericAPIView):
                 "data": None,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class AccountTokenRefreshView(TokenRefreshView):  # type: ignore
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().post(request, args, kwargs)
+        return Response(
+            data={
+                "status_code": response.status_code,
+                "message": "Token refreshed successfully",
+                "data": {
+                    "access_token": response.data["access"],
+                },
+            }
         )
 
 
