@@ -1,11 +1,12 @@
 from algosdk.constants import ADDRESS_LEN
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from django.db import models
 
 from flashpay.apps.core.models import BaseModel
 
 
-class Account(BaseModel):
+class Account(BaseModel):  # type: ignore[django-manager-missing]
     address = models.CharField(null=False, blank=False, max_length=ADDRESS_LEN, unique=True)
     is_verified = models.BooleanField(default=False)
 
@@ -53,3 +54,26 @@ class Webhook(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class CustomOutstandingToken(OutstandingToken):  # type: ignore[no-any-unimported]
+    user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta(OutstandingToken.Meta):  # type: ignore[no-any-unimported]
+        abstract = False
+
+    def __str__(self) -> str:
+        return "Token for {} ({})".format(
+            self.user,
+            self.jti,
+        )
+
+
+class CustomBlacklistedToken(BlacklistedToken):  # type: ignore[no-any-unimported]
+    token = models.OneToOneField(CustomOutstandingToken, on_delete=models.CASCADE)
+
+    class Meta(BlacklistedToken.Meta):  # type: ignore[no-any-unimported]
+        abstract = False
+
+    def __str__(self) -> str:
+        return f"Blacklisted token for {self.token.user}"

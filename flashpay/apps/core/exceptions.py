@@ -1,6 +1,8 @@
 from logging import getLogger
 from typing import Any, Dict
 
+from rest_framework_simplejwt.exceptions import InvalidToken
+
 from rest_framework import status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
@@ -31,6 +33,17 @@ def custom_exception_handler(exception: APIException, context: Dict[str, Any]) -
                 "status_code": exception_response.status_code,
                 "message": "Validation Error",
                 "data": exception.detail,
+            },
+            status=exception_response.status_code,
+        )
+
+    # token errors
+    if isinstance(exception, InvalidToken):
+        return Response(
+            data={
+                "status_code": exception_response.status_code,
+                "message": exception.detail["detail"],
+                "data": None,
             },
             status=exception_response.status_code,
         )
