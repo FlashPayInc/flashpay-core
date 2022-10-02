@@ -1,86 +1,59 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+from algosdk.account import generate_account
+from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.conf import settings
 
 from rest_framework.test import APIClient
 
-from flashpay.apps.account.models import Account, APIKey
-from flashpay.apps.account.utils import generate_api_key
-from flashpay.apps.core.models import Network
+from flashpay.apps.account.tests.fixtures import *  # noqa: F403 F401
+from flashpay.apps.core.tests.fixtures import *  # noqa: F403 F401
 
-# TODO: Clean up our entire test suite
+if TYPE_CHECKING:
+    from flashpay.apps.account.models import Account, APIKey
 
 
 @pytest.fixture
-def api_client() -> APIClient:
+def api_client() -> Any:
     return APIClient()
 
 
 @pytest.fixture
-def algod_client() -> Any:
-    return settings.TESTNET_ALGOD_CLIENT
+def jwt_api_client(
+    api_client: APIClient,
+    account: "Account",
+) -> Any:
+    access_token = str(RefreshToken.for_user(account).access_token)
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+    return api_client
 
 
 @pytest.fixture
-def indexer_client() -> Any:
-    return settings.TESTNET_INDEXER_CLIENT
+def secret_key_api_client(
+    api_client: APIClient,
+    account_api_key: "APIKey",
+) -> Any:
+    api_client.credentials(HTTP_X_SECRET_KEY=account_api_key.secret_key)
+    return api_client
 
 
 @pytest.fixture
-def test_account() -> Any:
-    account = Account.objects.create(
-        address="4PFBQOUG4AQPAIYEYOIVOOFCQXYUPVVW3UECD5MS3SEOM64LOWB5GFWDZM",
-        network=Network.TESTNET,
-        is_verified=True,
-    )
-    test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
-    main_secret, main_public = generate_api_key(account.address, Network.MAINNET)
-    APIKey.objects.create(
-        secret_key=test_secret,
-        public_key=test_public,
-        account=account,
-        network=Network.TESTNET,
-    )
-    APIKey.objects.create(
-        secret_key=main_secret,
-        public_key=main_public,
-        account=account,
-        network=Network.MAINNET,
-    )
-    auth_token = RefreshToken.for_user(account)
-    return account, auth_token
+def public_key_api_client(
+    api_client: APIClient,
+    account_api_key: "APIKey",
+) -> Any:
+    api_client.credentials(HTTP_X_PUBLIC_KEY=account_api_key.public_key)
+    return api_client
 
 
 @pytest.fixture
-def test_opted_in_account() -> Any:
-    account = Account.objects.create(
-        address="J7ZIYHAHBSNHO5SDR44WY3R4GKSBA6DWJGNUNYB2F3SNMEU2WAVY6OTFNQ", is_verified=True
-    )
-    auth_token = RefreshToken.for_user(account)
-    return account, auth_token
+def fernet() -> Any:
+    return Fernet(settings.ENCRYPTION_KEY.encode())
 
 
 @pytest.fixture
-def api_key_account() -> Any:
-    account = Account.objects.create(
-        address="C7RYOGEWDT7HZM3HKPSMU7QGWTRWR3EPOQTJ2OHXGYLARD3X62DNWELS34",
-        is_verified=True,
-    )
-    test_secret, test_public = generate_api_key(account.address, Network.TESTNET)
-    main_secret, main_public = generate_api_key(account.address, Network.MAINNET)
-    test_api_key = APIKey.objects.create(
-        secret_key=test_secret,
-        public_key=test_public,
-        account=account,
-        network=Network.TESTNET,
-    )
-    main_api_key = APIKey.objects.create(
-        secret_key=main_secret,
-        public_key=main_public,
-        account=account,
-        network=Network.MAINNET,
-    )
-    return test_api_key, main_api_key, account
+def random_algorand_address() -> Any:
+    return generate_account()[1]

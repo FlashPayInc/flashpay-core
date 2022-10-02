@@ -1,11 +1,8 @@
 from base64 import b64encode
-from typing import Any, Tuple
+from typing import Tuple
 
 import pytest
-from algosdk.account import generate_account
 from cryptography.fernet import Fernet
-
-from django.conf import settings
 
 from rest_framework.test import APIClient
 
@@ -14,13 +11,15 @@ from flashpay.apps.core.models import Network
 
 
 @pytest.mark.django_db
-def test_account_auth_view(api_client: APIClient) -> None:
-    fernet = Fernet(settings.ENCRYPTION_KEY.encode())
-    # This is a valid mainnet transaction.
-    tx_hash = "27PZRMWDLJCCEBI7YYGYGWVFY2VB3HPVUV63T4ERIQKROFFFL2NQ"
-    address = "MNUPZ7LXWZGJKEOPX43PHIBPSWAES3NCK3W25DHEMXB7C2MHBLTUSA7CGM"
-    nonce = "1"
-
+def test_account_auth_view(
+    api_client: APIClient,
+    fernet: Fernet,
+    account_auth_tx_details: Tuple[str, str, str],
+    random_algorand_address: str,
+) -> None:
+    tx_hash = account_auth_tx_details[0]
+    address = account_auth_tx_details[1]
+    nonce = account_auth_tx_details[2]
     # first connect wallet
     b64_encrypted_payload = b64encode(fernet.encrypt(f"100,{address}".encode())).decode()
     response = api_client.post("/api/accounts/connect", data={"payload": b64_encrypted_payload})
@@ -42,9 +41,8 @@ def test_account_auth_view(api_client: APIClient) -> None:
     assert "refresh_token" in response.data["data"]
 
     # Try authenticating an unverified wallet
-    unverified_address = generate_account()[1]
     b64_encrypted_payload = b64encode(
-        fernet.encrypt(f"{nonce},{unverified_address}".encode())
+        fernet.encrypt(f"{nonce},{random_algorand_address}".encode())
     ).decode()
     response = api_client.post("/api/accounts/connect", data={"payload": b64_encrypted_payload})
     assert response.status_code == 401
@@ -53,30 +51,33 @@ def test_account_auth_view(api_client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_account_setup_view_errors(api_client: APIClient) -> None:
-    fernet = Fernet(settings.ENCRYPTION_KEY.encode())
+def test_account_setup_view_errors(
+    api_client: APIClient,
+    fernet: Fernet,
+    account_auth_tx_details: Tuple[str, str, str],
+    random_algorand_address: str,
+) -> None:
     # This is a valid mainnet transaction.
-    valid_tx_hash = "27PZRMWDLJCCEBI7YYGYGWVFY2VB3HPVUV63T4ERIQKROFFFL2NQ"
-    valid_address = "MNUPZ7LXWZGJKEOPX43PHIBPSWAES3NCK3W25DHEMXB7C2MHBLTUSA7CGM"
-    nonce = "1"
-    unverified_address = generate_account()[1]
+    tx_hash = account_auth_tx_details[0]
+    address = account_auth_tx_details[1]
+    nonce = account_auth_tx_details[2]
 
     # first connect wallet for both addresses
     b64_encrypted_payload = b64encode(
-        fernet.encrypt(f"900,{unverified_address}".encode())
+        fernet.encrypt(f"900,{random_algorand_address}".encode())
     ).decode()
     response = api_client.post("/api/accounts/connect", data={"payload": b64_encrypted_payload})
     assert response.status_code == 401
     assert "Please set up your wallet and try again." in response.data["message"]
 
-    b64_encrypted_payload = b64encode(fernet.encrypt(f"{nonce},{valid_address}".encode())).decode()
+    b64_encrypted_payload = b64encode(fernet.encrypt(f"{nonce},{address}".encode())).decode()
     response = api_client.post("/api/accounts/connect", data={"payload": b64_encrypted_payload})
     assert response.status_code == 401
     assert "Please set up your wallet and try again." in response.data["message"]
 
     # check that using a valid tx_hash with the wrong sender address fails.
     b64_encrypted_payload = b64encode(
-        fernet.encrypt(f"{nonce},{unverified_address},{valid_tx_hash}".encode())
+        fernet.encrypt(f"{nonce},{random_algorand_address},{tx_hash}".encode())
     ).decode()
     response = api_client.post("/api/accounts/init", data={"payload": b64_encrypted_payload})
     assert response.status_code == 400
@@ -88,7 +89,7 @@ def test_account_setup_view_errors(api_client: APIClient) -> None:
     # check that using a valid tx_hash with the wrong nonce fails.
     wrong_nonce = "wrong"
     b64_encrypted_payload = b64encode(
-        fernet.encrypt(f"{wrong_nonce},{valid_address},{valid_tx_hash}".encode())
+        fernet.encrypt(f"{wrong_nonce},{address},{tx_hash}".encode())
     ).decode()
     response = api_client.post("/api/accounts/init", data={"payload": b64_encrypted_payload})
     assert response.status_code == 400
@@ -97,9 +98,9 @@ def test_account_setup_view_errors(api_client: APIClient) -> None:
         in response.data["message"]
     )
 
-    # check that setting up an already set up account fails.
+    # check that setting up an account that is already set up account fails.
     b64_encrypted_payload = b64encode(
-        fernet.encrypt(f"{nonce},{valid_address},{valid_tx_hash}".encode())
+        fernet.encrypt(f"{nonce},{address},{tx_hash}".encode())
     ).decode()
     response = api_client.post("/api/accounts/init", data={"payload": b64_encrypted_payload})
     assert response.status_code == 200
@@ -111,77 +112,60 @@ def test_account_setup_view_errors(api_client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_api_key_views(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
-    auth_token = test_account[1]
-    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
+@pytest.mark.parametrize("network", [Network.TESTNET, Network.MAINNET])
+@pytest.mark.parametrize("is_account_opted_in", [False, True])
+def test_api_key_views(
+    jwt_api_client: APIClient,
+    account: Account,
+    network: Network,
+) -> None:
+    def verify_api_key_and_network(_network: Network, _data: dict) -> None:
+        if _network == Network.TESTNET:
+            assert "sk_test_" in _data["secret_key"]
+            assert "pk_test_" in _data["public_key"]
+        else:
+            assert "sk_" in _data["secret_key"]
+            assert "pk_" in _data["public_key"]
 
-    # Test Net APIKey
-    # First, update the network to testnet
-    api_client.post("/api/accounts/network", data={"network": "testnet"})
-    response = api_client.post("/api/accounts/api-keys")
+    jwt_api_client.post("/api/accounts/network", data={"network": network.value})
+    response = jwt_api_client.post("/api/accounts/api-keys")
     assert response.status_code == 201
-    assert response.data["data"]["network"] == "testnet"
-    assert "sk_test" in response.data["data"]["secret_key"]
-    assert "pk_test" in response.data["data"]["public_key"]
+    assert response.data["data"]["network"] == network.value
+    verify_api_key_and_network(network, response.data["data"])
 
-    # Main Net APIKey
-    api_client.post("/api/accounts/network", data={"network": "mainnet"})
-    response1 = api_client.post("/api/accounts/api-keys")
-    assert response1.status_code == 201
-    assert response1.data["data"]["network"] == "mainnet"
-    assert "sk_test" not in response1.data["data"]["secret_key"]
-    assert "pk_test" not in response1.data["data"]["public_key"]
     # Fetch APIKey
-    response2 = api_client.get("/api/accounts/api-keys")
+    response2 = jwt_api_client.get("/api/accounts/api-keys")
     assert response2.status_code == 200
-    assert len(response2.data["data"]["results"]) == 1
+    verify_api_key_and_network(network, response2.data["data"])
 
 
 @pytest.mark.django_db
-def test_update_account_network(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
-    auth_token = test_account[1]
-    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
-
-    # update account's network to testnet
-    response = api_client.post("/api/accounts/network", data={"network": "testnet"})
+@pytest.mark.parametrize("is_account_opted_in", [False, True])
+@pytest.mark.parametrize("network", [Network.TESTNET, Network.MAINNET])
+def test_update_account_network(
+    jwt_api_client: APIClient,
+    account: Account,
+    network: Network,
+) -> None:
+    network = Network.TESTNET if network == Network.MAINNET else Network.MAINNET
+    response = jwt_api_client.post("/api/accounts/network", data={"network": network.value})
     assert response.status_code == 200
-    assert response.data["data"]["network"] == Network.TESTNET
-
-    # update account's network to mainnet
-    response = api_client.post("/api/accounts/network", data={"network": "mainnet"})
-    assert response.status_code == 200
-    assert response.data["data"]["network"] == Network.MAINNET
+    assert response.data["data"]["network"] == network
 
 
 @pytest.mark.django_db
-def test_webhook_crud(api_client: APIClient, test_account: Tuple[Account, Any]) -> None:
-    auth_token = test_account[1]
-    api_client.credentials(HTTP_AUTHORIZATION="Bearer " + str(auth_token.access_token))
-
-    # Create testnet webhook
+@pytest.mark.parametrize("is_account_opted_in", [False, True])
+@pytest.mark.parametrize("network", [Network.TESTNET, Network.MAINNET])
+def test_webhook_crud(
+    jwt_api_client: APIClient,
+    network: Network,
+) -> None:
     data = {"url": "https://flashpay.netlify.app/hook"}
-    response = api_client.post("/api/accounts/webhook", data=data)
+    response = jwt_api_client.post("/api/accounts/webhook", data=data)
     assert response.status_code == 201
-    assert response.data["data"]["network"] == "testnet"
+    assert response.data["data"]["network"] == network.value
 
-    # Retrieve webhook for testnet
-    response = api_client.get("/api/accounts/webhook")
+    response = jwt_api_client.get("/api/accounts/webhook")
     assert response.status_code == 200
-    assert response.data["data"]["count"] == 1
-
-    # Update network to mainnet
-    api_client.post("/api/accounts/network", data={"network": "mainnet"})
-    response1 = api_client.post("/api/accounts/api-keys")
-    assert response1.status_code == 201
-    assert response1.data["data"]["network"] == "mainnet"
-
-    # Create mainnet webhook
-    data = {"url": "https://flashpay.netlify.app/hook"}
-    response = api_client.post("/api/accounts/webhook", data=data)
-    assert response.status_code == 201
-    assert response.data["data"]["network"] == "mainnet"
-
-    # Retrieve webhook for mainnet
-    response = api_client.get("/api/accounts/webhook")
-    assert response.status_code == 200
-    assert response.data["data"]["count"] == 1
+    assert response.data["data"]["url"] == data["url"]
+    assert response.data["data"]["network"] == network.value
