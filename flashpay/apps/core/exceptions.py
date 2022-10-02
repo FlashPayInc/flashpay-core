@@ -42,8 +42,8 @@ def custom_exception_handler(exception: APIException, context: Dict[str, Any]) -
         return Response(
             data={
                 "status_code": exception_response.status_code,
-                "message": exception.detail["detail"],
-                "data": None,
+                "message": "Invalid Token",
+                "data": exception.detail,
             },
             status=exception_response.status_code,
         )

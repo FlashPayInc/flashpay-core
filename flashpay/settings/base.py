@@ -46,6 +46,10 @@ ROOT_URLCONF = "flashpay.urls"
 
 SITE_ID = 1
 
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1048576  # 1MB
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = FILE_UPLOAD_MAX_MEMORY_SIZE
+
 
 # ==============================================================================
 # MIDDLEWARE SETTINGS
