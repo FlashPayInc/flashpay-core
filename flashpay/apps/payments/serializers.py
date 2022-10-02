@@ -127,6 +127,13 @@ class TransactionSerializer(ModelSerializer):
             except PaymentLink.DoesNotExist:
                 raise ValidationError("Invalid payment link provided")
 
+            if payment_link.is_active is False:
+                raise ValidationError("Payment link is not active.")
+            # check if the payment link is one-time and it has accrued > 0 in revenue.
+            if payment_link.is_one_time and payment_link.total_revenue > 0:
+                raise ValidationError(
+                    "You cannot make multiple payments to a one-time payment link."
+                )
             # Check if payment link has fixed amount and amount is same
             if payment_link.has_fixed_amount and attrs["amount"] != payment_link.amount:
                 raise ValidationError({"amount": "payment link has fixed amount"})
