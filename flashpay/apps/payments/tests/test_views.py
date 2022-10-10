@@ -520,4 +520,4 @@ def test_daily_revenue(
 
     response = jwt_api_client.get(f"/api/daily-revenue?asa_id={usdc_asa.asa_id}")
     assert response.status_code == 200
-    assert len(response.data["data"]["results"]) == 1
+    assert len(response.data["data"]) == 1

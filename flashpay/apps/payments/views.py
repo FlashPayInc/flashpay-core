@@ -31,6 +31,7 @@ from flashpay.apps.account.models import APIKey
 from flashpay.apps.core.models import Network
 from flashpay.apps.core.utils import encrypt_fernet_message
 from flashpay.apps.payments.models import DailyRevenue, PaymentLink, Transaction, TransactionStatus
+from flashpay.apps.payments.permissions import IsAuthenticatedAndOwner
 from flashpay.apps.payments.serializers import (
     CreatePaymentLinkSerializer,
     DailyRevenueSerializer,
@@ -43,6 +44,7 @@ from flashpay.apps.payments.utils import verify_transaction
 
 if TYPE_CHECKING:
     from rest_framework.authentication import BaseAuthentication
+    from rest_framework.permissions import BasePermission
     from rest_framework.serializers import BaseSerializer
 
 logger = logging.getLogger(__name__)
@@ -108,6 +110,12 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
             }
         return get_object_or_404(queryset, **filter_kwargs)
 
+    def get_permissions(self) -> List["BasePermission"]:  # type: ignore
+        if self.request.method == "PATCH":
+            return [IsAuthenticatedAndOwner()]
+
+        return super().get_permissions()  # type: ignore
+
     def retrieve(self, request: Request, *args: Dict, **kwargs: Dict) -> Response:
         payment_link = self.get_object()
         updated_data = self.get_serializer(payment_link).data
@@ -154,7 +162,6 @@ class PaymentLinkDetailView(RetrieveUpdateAPIView):
         payment_link.save()
 
         updated_data = self.get_serializer(payment_link).data
-        updated_data["public_key"] = self.get_public_api_key(payment_link)
         return Response(
             {
                 "status_code": status.HTTP_200_OK,
@@ -339,6 +346,7 @@ class DailyRevenueView(ListAPIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = DailyRevenueSerializer
+    pagination_class = None
 
     def get_queryset(self) -> QuerySet:
         asa_id = self.request.query_params.get("asa_id", None)

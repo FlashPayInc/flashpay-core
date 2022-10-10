@@ -1,5 +1,6 @@
 import hmac
 import json
+from decimal import Decimal
 from logging import getLogger
 
 import requests
@@ -93,6 +94,10 @@ def calculate_daily_revenue(network: Network) -> None:
             if total_revenue is not None:
                 DailyRevenue.objects.create(
                     account=account, asset=asset, amount=total_revenue, network=network
+                )
+            else:
+                DailyRevenue.objects.create(
+                    account=account, asset=asset, amount=Decimal("0.0000"), network=network
                 )
 
 

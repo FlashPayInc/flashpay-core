@@ -163,6 +163,6 @@ def test_revenue_calculator(
     assert usdt_revenue.count() == 1
     assert usdt_revenue.first().amount == 1000000  # type: ignore
 
-    assert not choice_coin_revenue.exists()
-    assert choice_coin_revenue.count() == 0
-    assert choice_coin_revenue.first() is None
+    assert choice_coin_revenue.exists()
+    assert choice_coin_revenue.count() == 1
+    assert choice_coin_revenue.first().amount == 0  # type: ignore
