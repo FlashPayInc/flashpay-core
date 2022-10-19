@@ -99,47 +99,27 @@ def test_update_assets_view_wrong_auth(api_client: APIClient) -> None:
 @pytest.mark.django_db
 def test_update_assets_view(api_client: APIClient, settings: LazySettings) -> None:
     api_client.credentials(HTTP_AUTHORIZATION=f"Token {settings.ASSETS_UPLOAD_API_KEY}")
-    data = [
-        {
-            "asa_id": 0,
-            "short_name": "ALGO",
-            "long_name": "ALGORAND",
-            "image_url": "https://flashpay.com/img.png",
-            "decimals": 6,
-            "network": "mainnet",
-        },
-        {
-            "asa_id": 100,
-            "short_name": "USDt",
-            "long_name": "Tether USDt",
-            "decimals": 6,
-            "image_url": "https://flashpay.com/img.png",
-            "network": "mainnet",
-        },
-        {
-            "asa_id": 200,
-            "short_name": "USDC",
-            "long_name": "USDC",
-            "decimals": 6,
-            "image_url": "https://flashpay.com/img.png",
-            "network": "mainnet",
-        },
-    ]
+    data = {
+        "asa_id": 0,
+        "short_name": "ALGO",
+        "long_name": "ALGORAND",
+        "image_url": "https://flashpay.com/img.png",
+        "decimals": 6,
+        "network": "mainnet",
+    }
     response = api_client.post("/api/core/assets", data=data, format="json")
     assert response.status_code == 201
     assert response.data["message"] == "Assets updated successfully"
 
     # adding the same asset but with a different network fails.
-    data = [
-        {
-            "asa_id": 0,
-            "short_name": "ALGO",
-            "long_name": "ALGORAND",
-            "image_url": "https://flashpay.com/img.png",
-            "decimals": 6,
-            "network": "testnet",
-        },
-    ]
+    data = {
+        "asa_id": 0,
+        "short_name": "ALGO",
+        "long_name": "ALGORAND",
+        "image_url": "https://flashpay.com/img.png",
+        "decimals": 6,
+        "network": "testnet",
+    }
     response = api_client.post("/api/core/assets", data=data, format="json")
     assert response.status_code == 400
     assert response.data["message"] == "Validation Error"

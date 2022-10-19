@@ -115,18 +115,15 @@ class AssetView(ListCreateAPIView):
         return []
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        serializer = AssetSerializer(data=request.data, many=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
+        response = super(AssetView, self).create(request, args, kwargs)
         return Response(
             {
-                "status_code": status.HTTP_201_CREATED,
+                "status_code": response.status_code,
                 "message": "Assets updated successfully",
                 "data": self.get_serializer(self.get_queryset(), many=True).data,
             },
             status=status.HTTP_201_CREATED,
-            headers=headers,
+            headers=response.headers,
         )
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
