@@ -329,7 +329,7 @@ class WebhookView(ListCreateAPIView):
             {
                 "status_code": status.HTTP_200_OK,
                 "message": "Webhook fetched successfully.",
-                "data": response.data[0],  # this is always 1.
+                "data": response.data[0] if len(response.data) == 1 else None,  # this is always 1.
             },
             status.HTTP_200_OK,
         )
