@@ -160,6 +160,10 @@ def test_webhook_crud(
     jwt_api_client: APIClient,
     network: Network,
 ) -> None:
+    response = jwt_api_client.get("/api/accounts/webhook")
+    assert response.status_code == 200
+    assert response.data["data"] is None
+
     data = {"url": "https://flashpay.netlify.app/hook"}
     response = jwt_api_client.post("/api/accounts/webhook", data=data)
     assert response.status_code == 201
