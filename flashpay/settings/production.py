@@ -25,10 +25,10 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 CSRF_COOKIE_SECURE = True
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-seconds
-SECURE_HSTS_SECONDS = 60 * 60 * 24 * 7 * 52  # one year
+# SECURE_HSTS_SECONDS = 60 * 60 * 24 * 7 * 52  # one year
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-include-subdomains
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-ssl-redirect
 SECURE_SSL_REDIRECT = True
@@ -40,7 +40,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-preload
-SECURE_HSTS_PRELOAD = True
+# SECURE_HSTS_PRELOAD = True
 
 # https://docs.djangoproject.com/en/dev/ref/middleware/#x-content-type-options-nosniff
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -126,9 +126,9 @@ sentry_sdk.init(
 # ==============================================================================
 # THIRD-PARTY SETTINGS
 # ==============================================================================
-CORS_ALLOW_ALL_ORIGINS = False
-
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_ALL_ORIGINS = True
+# TODO: Figure out a way around this later
+# CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
