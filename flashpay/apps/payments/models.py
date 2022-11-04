@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import QuerySet, Sum
 
 from flashpay.apps.core.models import BaseModel, Network
+from flashpay.apps.payments.constants import ZERO_AMOUNT
 
 
 class TransactionStatus(models.TextChoices):
@@ -62,9 +63,11 @@ class PaymentLink(BaseModel):
     @property
     def total_revenue(self) -> Decimal:
         total: Optional[Decimal] = Transaction.objects.filter(
-            txn_reference__icontains=self.uid.hex, status=TransactionStatus.SUCCESS
+            network=self.network,
+            txn_reference__icontains=self.uid.hex,
+            status=TransactionStatus.SUCCESS,
         ).aggregate(Sum("amount"))["amount__sum"]
-        return total if total is not None else Decimal("0.0000")
+        return total if total is not None else ZERO_AMOUNT
 
     def transactions(self) -> QuerySet:
         return Transaction.objects.filter(txn_reference__icontains=self.uid.hex)

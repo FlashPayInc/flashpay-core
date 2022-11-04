@@ -1,6 +1,5 @@
 import hmac
 import json
-from decimal import Decimal
 from logging import getLogger
 
 import requests
@@ -14,6 +13,7 @@ from django.utils import timezone
 
 from flashpay.apps.account.models import Account, APIKey, Webhook
 from flashpay.apps.core.models import Asset, Network
+from flashpay.apps.payments.constants import ZERO_AMOUNT
 from flashpay.apps.payments.models import DailyRevenue, PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
@@ -75,30 +75,37 @@ def send_webhook_transaction_status(account: Account, transaction: Transaction) 
 
 
 def calculate_daily_revenue(network: Network) -> None:
-    date = timezone.now().date()
+    now = timezone.now().date()
     accounts = Account.objects.filter(is_verified=True)
     assets = Asset.objects.filter(network=network)
     for account in accounts:
         for asset in assets:
-            revenue_exists = DailyRevenue.objects.filter(
-                network=network, account=account, asset=asset, created_at__date=date
-            ).exists()
-            if revenue_exists:
-                continue
+            try:
+                revenue = DailyRevenue.objects.get(
+                    network=network,
+                    account=account,
+                    asset=asset,
+                    created_at__date=now,
+                )
+            except DailyRevenue.DoesNotExist:
+                revenue = DailyRevenue.objects.create(
+                    account=account,
+                    asset=asset,
+                    amount=ZERO_AMOUNT,
+                    network=network,
+                )
+
             total_revenue = Transaction.objects.filter(
                 asset=asset,
                 status=TransactionStatus.SUCCESS,
-                updated_at__date=date,
+                updated_at__date=now,
                 recipient__iexact=account.address,
+                network=network,
             ).aggregate(total=Sum("amount"))["total"]
             if total_revenue is not None:
-                DailyRevenue.objects.create(
-                    account=account, asset=asset, amount=total_revenue, network=network
-                )
-            else:
-                DailyRevenue.objects.create(
-                    account=account, asset=asset, amount=Decimal("0.0000"), network=network
-                )
+                revenue.amount = total_revenue
+
+            revenue.save()
 
 
 @db_periodic_task(crontab(minute="*/1"))
@@ -150,7 +157,7 @@ def verify_transactions() -> None:
             continue
 
 
-@db_periodic_task(crontab(day="*/1"))
+@db_periodic_task(crontab(hour="*/1"))
 @lock_task("lock-tesnet-daily-revenue-calculation")
 def calculate_testnet_daily_revenue() -> None:
     try:
@@ -162,7 +169,7 @@ def calculate_testnet_daily_revenue() -> None:
         )
 
 
-@db_periodic_task(crontab(day="*/1"))
+@db_periodic_task(crontab(hour="*/1"))
 @lock_task("lock-mainnet-daily-revenue-calculation")
 def calculate_mainnet_daily_transaction() -> None:
     try:
