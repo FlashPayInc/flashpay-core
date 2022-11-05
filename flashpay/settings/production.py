@@ -1,10 +1,3 @@
-import logging
-
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
-
 from .base import *  # noqa
 from .base import env
 
@@ -64,6 +57,20 @@ CACHES = {
 
 
 # ==============================================================================
+# SCOUT APM
+# ==============================================================================
+INSTALLED_APPS.insert(0, "scout_apm.django")  # noqa: F405
+
+SCOUT_MONITOR = True
+
+SCOUT_KEY = env.str("SCOUT_KEY")
+
+SCOUT_NAME = env.str("SCOUT_NAME")
+
+SCOUT_ERRORS_ENABLED = True
+
+
+# ==============================================================================
 # LOGGING
 # ==============================================================================
 # https://docs.djangoproject.com/en/dev/ref/settings/#logging
@@ -74,7 +81,8 @@ LOGGING = {
     "disable_existing_loggers": True,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s " "%(process)d %(thread)d %(message)s"
+            "format": "%(levelname)s %(asctime)s %(module)s " "%(process)d %(thread)d %(message)s",
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         }
     },
     "handlers": {
@@ -91,10 +99,14 @@ LOGGING = {
             "handlers": ["console"],
             "propagate": False,
         },
-        "sentry_sdk": {"level": "ERROR", "handlers": ["console"], "propagate": False},
         "django.security.DisallowedHost": {
             "level": "ERROR",
             "handlers": ["console"],
+            "propagate": False,
+        },
+        "scout_apm": {
+            "handlers": ["console"],
+            "level": "ERROR",
             "propagate": False,
         },
     },
@@ -102,33 +114,10 @@ LOGGING = {
 
 
 # ==============================================================================
-# SENTRY
-# ==============================================================================
-SENTRY_DSN = env("SENTRY_DSN")
-
-SENTRY_LOG_LEVEL = env.int("DJANGO_SENTRY_LOG_LEVEL", logging.INFO)
-
-sentry_logging = LoggingIntegration(
-    level=SENTRY_LOG_LEVEL,  # Capture info and above as breadcrumbs
-    event_level=logging.ERROR,  # Send errors as events
-)
-
-integrations = [sentry_logging, DjangoIntegration(), RedisIntegration()]
-
-sentry_sdk.init(
-    dsn=SENTRY_DSN,
-    integrations=integrations,
-    environment=env.str("SENTRY_ENVIRONMENT", default="production"),
-    traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
-)
-
-
-# ==============================================================================
 # THIRD-PARTY SETTINGS
 # ==============================================================================
+# This is set to true to enable client sdk access the API
 CORS_ALLOW_ALL_ORIGINS = True
-# TODO: Figure out a way around this later
-# CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
