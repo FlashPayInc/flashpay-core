@@ -116,9 +116,8 @@ LOGGING = {
 # ==============================================================================
 # THIRD-PARTY SETTINGS
 # ==============================================================================
+# This is set to true to enable client sdk access the API
 CORS_ALLOW_ALL_ORIGINS = True
-# TODO: Figure out a way around this later
-# CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticatedOrReadOnly",),
