@@ -57,6 +57,20 @@ CACHES = {
 
 
 # ==============================================================================
+# SCOUT APM
+# ==============================================================================
+INSTALLED_APPS.insert(0, "scout_apm.django")  # noqa: F405
+
+SCOUT_MONITOR = True
+
+SCOUT_KEY = env.str("SCOUT_KEY")
+
+SCOUT_NAME = env.str("SCOUT_NAME")
+
+SCOUT_ERRORS_ENABLED = True
+
+
+# ==============================================================================
 # LOGGING
 # ==============================================================================
 # https://docs.djangoproject.com/en/dev/ref/settings/#logging
@@ -67,7 +81,8 @@ LOGGING = {
     "disable_existing_loggers": True,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s " "%(process)d %(thread)d %(message)s"
+            "format": "%(levelname)s %(asctime)s %(module)s " "%(process)d %(thread)d %(message)s",
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         }
     },
     "handlers": {
@@ -87,6 +102,11 @@ LOGGING = {
         "django.security.DisallowedHost": {
             "level": "ERROR",
             "handlers": ["console"],
+            "propagate": False,
+        },
+        "scout_apm": {
+            "handlers": ["console"],
+            "level": "ERROR",
             "propagate": False,
         },
     },
