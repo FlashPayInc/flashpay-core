@@ -18,14 +18,14 @@ from flashpay.apps.payments.models import (
 )
 from flashpay.apps.payments.tasks import (
     calculate_daily_revenue,
-    send_webhook_transaction_status,
-    verify_transactions,
+    send_webhook_transaction_status_task,
+    verify_transactions_task,
 )
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("is_account_opted_in", [True])
-def test_verify_transactions_task(
+def test_verify_transactions_task_task(
     jwt_api_client: APIClient,
     account: Account,
     usdc_asa: Asset,
@@ -60,10 +60,10 @@ def test_verify_transactions_task(
         sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     )
 
-    verify_transactions.call_local()
+    verify_transactions_task.call_local()
 
     transaction = get_object_or_404(Transaction, uid=transaction.uid)
-    send_webhook_transaction_status.call_local(payment_link.account, transaction)
+    send_webhook_transaction_status_task.call_local(payment_link.account, transaction)
     assert transaction.txn_hash == "F23RSTSTWEWMX3LWZ3ZEUHRWFPOIXXAPOWS2DJ7YHK5NC3VKKTDA"
     assert transaction.status == TransactionStatus.SUCCESS
 

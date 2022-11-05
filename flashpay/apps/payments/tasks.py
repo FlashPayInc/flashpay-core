@@ -22,7 +22,7 @@ logger = getLogger(__name__)
 
 
 @db_task(retries=5, retry_delay=1800)
-def send_webhook_transaction_status(account: Account, transaction: Transaction) -> None:
+def send_webhook_transaction_status_task(account: Account, transaction: Transaction) -> None:
     """Task that sends webhook confirmation to users on successful transaction.
     The request times out if a response is not received in 10 seconds.
 
@@ -108,9 +108,9 @@ def calculate_daily_revenue(network: Network) -> None:
             revenue.save()
 
 
-@db_periodic_task(crontab(minute="*/1"))
-@lock_task("lock-verify-txn")
-def verify_transactions() -> None:
+@db_periodic_task(crontab(minute="*/5"))
+@lock_task("lock-verify-txns")
+def verify_transactions_task() -> None:
     db_txns = Transaction.objects.filter(status=TransactionStatus.PENDING)
     for db_txn in db_txns:
         try:
@@ -152,14 +152,14 @@ def verify_transactions() -> None:
                     except Account.DoesNotExist:
                         continue
                     else:
-                        send_webhook_transaction_status(account, db_txn)
+                        send_webhook_transaction_status_task(account, db_txn)
         except IndexerHTTPError:
             continue
 
 
 @db_periodic_task(crontab(hour="*/1"))
-@lock_task("lock-tesnet-daily-revenue-calculation")
-def calculate_testnet_daily_revenue() -> None:
+@lock_task("testnet-daily-revenue-lock")
+def testnet_daily_revenue_task() -> None:
     try:
         calculate_daily_revenue(Network.TESTNET)
     except Exception:
@@ -170,8 +170,8 @@ def calculate_testnet_daily_revenue() -> None:
 
 
 @db_periodic_task(crontab(hour="*/1"))
-@lock_task("lock-mainnet-daily-revenue-calculation")
-def calculate_mainnet_daily_transaction() -> None:
+@lock_task("mainnet-daily-revenue-lock")
+def mainnet_daily_revenue_task() -> None:
     try:
         calculate_daily_revenue(Network.MAINNET)
     except Exception:
