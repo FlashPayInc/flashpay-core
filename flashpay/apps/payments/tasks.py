@@ -1,6 +1,5 @@
 import hmac
 import json
-from decimal import Decimal
 from logging import getLogger
 
 import requests
@@ -14,6 +13,7 @@ from django.utils import timezone
 
 from flashpay.apps.account.models import Account, APIKey, Webhook
 from flashpay.apps.core.models import Asset, Network
+from flashpay.apps.payments.constants import ZERO_AMOUNT
 from flashpay.apps.payments.models import DailyRevenue, PaymentLink, Transaction, TransactionStatus
 from flashpay.apps.payments.serializers import TransactionSerializer
 from flashpay.apps.payments.utils import verify_transaction
@@ -22,7 +22,7 @@ logger = getLogger(__name__)
 
 
 @db_task(retries=5, retry_delay=1800)
-def send_webhook_transaction_status(account: Account, transaction: Transaction) -> None:
+def send_webhook_transaction_status_task(account: Account, transaction: Transaction) -> None:
     """Task that sends webhook confirmation to users on successful transaction.
     The request times out if a response is not received in 10 seconds.
 
@@ -75,35 +75,42 @@ def send_webhook_transaction_status(account: Account, transaction: Transaction) 
 
 
 def calculate_daily_revenue(network: Network) -> None:
-    date = timezone.now().date()
+    now = timezone.now().date()
     accounts = Account.objects.filter(is_verified=True)
     assets = Asset.objects.filter(network=network)
     for account in accounts:
         for asset in assets:
-            revenue_exists = DailyRevenue.objects.filter(
-                network=network, account=account, asset=asset, created_at__date=date
-            ).exists()
-            if revenue_exists:
-                continue
+            try:
+                revenue = DailyRevenue.objects.get(
+                    network=network,
+                    account=account,
+                    asset=asset,
+                    created_at__date=now,
+                )
+            except DailyRevenue.DoesNotExist:
+                revenue = DailyRevenue.objects.create(
+                    account=account,
+                    asset=asset,
+                    amount=ZERO_AMOUNT,
+                    network=network,
+                )
+
             total_revenue = Transaction.objects.filter(
                 asset=asset,
                 status=TransactionStatus.SUCCESS,
-                updated_at__date=date,
+                updated_at__date=now,
                 recipient__iexact=account.address,
+                network=network,
             ).aggregate(total=Sum("amount"))["total"]
             if total_revenue is not None:
-                DailyRevenue.objects.create(
-                    account=account, asset=asset, amount=total_revenue, network=network
-                )
-            else:
-                DailyRevenue.objects.create(
-                    account=account, asset=asset, amount=Decimal("0.0000"), network=network
-                )
+                revenue.amount = total_revenue
+
+            revenue.save()
 
 
-@db_periodic_task(crontab(minute="*/1"))
-@lock_task("lock-verify-txn")
-def verify_transactions() -> None:
+@db_periodic_task(crontab(minute="*/5"))
+@lock_task("lock-verify-txns")
+def verify_transactions_task() -> None:
     db_txns = Transaction.objects.filter(status=TransactionStatus.PENDING)
     for db_txn in db_txns:
         try:
@@ -145,14 +152,14 @@ def verify_transactions() -> None:
                     except Account.DoesNotExist:
                         continue
                     else:
-                        send_webhook_transaction_status(account, db_txn)
+                        send_webhook_transaction_status_task(account, db_txn)
         except IndexerHTTPError:
             continue
 
 
-@db_periodic_task(crontab(day="*/1"))
-@lock_task("lock-tesnet-daily-revenue-calculation")
-def calculate_testnet_daily_revenue() -> None:
+@db_periodic_task(crontab(hour="*/1"))
+@lock_task("testnet-daily-revenue-lock")
+def testnet_daily_revenue_task() -> None:
     try:
         calculate_daily_revenue(Network.TESTNET)
     except Exception:
@@ -162,9 +169,9 @@ def calculate_testnet_daily_revenue() -> None:
         )
 
 
-@db_periodic_task(crontab(day="*/1"))
-@lock_task("lock-mainnet-daily-revenue-calculation")
-def calculate_mainnet_daily_transaction() -> None:
+@db_periodic_task(crontab(hour="*/1"))
+@lock_task("mainnet-daily-revenue-lock")
+def mainnet_daily_revenue_task() -> None:
     try:
         calculate_daily_revenue(Network.MAINNET)
     except Exception:

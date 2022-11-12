@@ -357,16 +357,14 @@ class DailyRevenueView(ListAPIView):
             network=self.request.network,
         )  # type: ignore
         if date_range == "30d":
-            end = timezone.now()
             start = timezone.now() - timezone.timedelta(days=30)
-            qs = qs.filter(created_at__date__lte=end.date(), created_at__date_gte=start.date())
+            qs = qs.filter(created_at__date_gte=start.date())
         elif date_range == "year":
             qs = qs.filter(created_at__year=timezone.now().year)
         elif date_range == "6m":
-            end = timezone.now()
             start = timezone.now() - timezone.timedelta(days=30 * 6)
-            qs = qs.filter(created_at__date__lte=end.date(), created_at__date_gte=start.date())
-        return qs
+            qs = qs.filter(created_at__date_gte=start.date())
+        return qs.order_by("created_at")
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         response = super().list(request, *args, **kwargs)

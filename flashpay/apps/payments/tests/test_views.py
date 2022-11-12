@@ -502,7 +502,10 @@ def test_verify_transaction_with_wrong_txn_hash_and_txn_note(
 @pytest.mark.parametrize("is_account_opted_in", [True])
 @pytest.mark.parametrize("network", [Network.TESTNET, Network.MAINNET])
 def test_daily_revenue(
-    jwt_api_client: APIClient, account: Account, usdc_asa: Asset, network: Network
+    jwt_api_client: APIClient,
+    account: Account,
+    usdc_asa: Asset,
+    network: Network,
 ) -> None:
     # Create Transactions
     Transaction.objects.create(
@@ -512,6 +515,7 @@ def test_daily_revenue(
         asset=usdc_asa,
         recipient=str(account.address),
         status=TransactionStatus.SUCCESS,
+        network=network,
         sender="XQ52337XYJMFNUM73IC5KSLG6UXYKMK3H36LW6RI2DRBSGIJRQBI6X6OYI",
     )
 
@@ -521,3 +525,5 @@ def test_daily_revenue(
     response = jwt_api_client.get(f"/api/daily-revenue?asa_id={usdc_asa.asa_id}")
     assert response.status_code == 200
     assert len(response.data["data"]) == 1
+    assert response.data["data"][0]["asa_id"] == usdc_asa.asa_id
+    assert response.data["data"][0]["amount"] == "100.0000"

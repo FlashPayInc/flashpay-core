@@ -206,6 +206,11 @@ class VerifyTransactionSerializer(Serializer):
 
 
 class DailyRevenueSerializer(ModelSerializer):
+    asa_id = SerializerMethodField()
+
     class Meta:
         model = DailyRevenue
-        fields = ("asset", "amount", "created_at")
+        fields = ("asa_id", "amount", "created_at")
+
+    def get_asa_id(self, obj: DailyRevenue) -> int:
+        return obj.asset.asa_id
