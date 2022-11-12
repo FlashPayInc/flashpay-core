@@ -1,6 +1,7 @@
 import pytest
 
 from flashpay.apps.account.models import Account, APIKey, Setting
+from flashpay.apps.core.models import Network
 
 
 @pytest.mark.django_db
@@ -20,3 +21,21 @@ def test_models() -> None:
     assert api_key.secret_key == api_key_dat["secret_key"]
     assert api_key.public_key == api_key_dat["public_key"]
     assert api_key.account == account
+
+
+@pytest.mark.django_db
+def test_api_keys_creation_signal_works(random_algorand_address: str) -> None:
+    account = Account.objects.create(address=random_algorand_address)
+    assert account.api_keys.count() == 0
+
+    account.is_verified = True
+    account.save()
+    assert account.api_keys.count() == 2
+
+    api_key_testnet = account.api_keys.get(network=Network.TESTNET)
+    assert api_key_testnet.secret_key.startswith("sk_test_")
+    assert api_key_testnet.public_key.startswith("pk_test_")
+
+    api_key_mainnet = account.api_keys.get(network=Network.MAINNET)
+    assert api_key_mainnet.secret_key.startswith("sk_")
+    assert api_key_mainnet.public_key.startswith("pk_")
